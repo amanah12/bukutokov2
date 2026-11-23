@@ -1,9 +1,12 @@
 package com.bukutoko.app;
 
+import android.graphics.Bitmap;
 import android.graphics.Color;
 import android.view.Gravity;
 import android.view.View;
+import android.widget.CheckBox;
 import android.widget.EditText;
+import android.widget.ImageView;
 import android.widget.LinearLayout;
 import android.widget.SeekBar;
 import android.widget.TextView;
@@ -64,8 +67,10 @@ public class SetScreen extends Screen {
         for (final String[] th : Th.LIST) {
             Ui.Btn b = ui.btn(fl, th[1], Ui.W, v -> {
                 Store.put(set, "tema", th[0]);
-                Store.put(set, "c1", th[2]);
-                Store.put(set, "c2", th[3]);
+                if (!th[0].equals("diy")) {
+                    Store.put(set, "c1", th[2]);
+                    Store.put(set, "c2", th[3]);
+                }
                 st.save();
                 a.restyle();
             });
@@ -73,6 +78,9 @@ public class SetScreen extends Screen {
             b.on(th[0].equals(cur));
         }
         ui.mt(ui.note(t, "Memilih tema juga mengganti warna. Warna masih bisa diubah lagi di bawah."), 8);
+
+        // ---- tema DIY
+        if (cur.equals("diy")) diyCard(into, set);
 
         // ---- warna
         Ui.Card w = ui.card(into, Ui.NORMAL);
@@ -138,6 +146,56 @@ public class SetScreen extends Screen {
             st.save();
         };
 
+        // ---- QRIS
+        Ui.Card q = ui.card(into, Ui.NORMAL);
+        ui.mt(q, 14);
+        ui.h2(q, "QRIS");
+        TextView qn = ui.tv(q, "Unggah gambar QRIS tokomu agar pelanggan bisa scan untuk membayar. Tombol QRIS muncul di bagian atas aplikasi.", 14);
+        ui.mar(qn, 0, 6, 0, 0);
+        Bitmap qbm = Ui.decode(Store.str(set, "qris"));
+        if (qbm != null) {
+            ImageView qi = new ImageView(a);
+            qi.setImageBitmap(qbm);
+            qi.setAdjustViewBounds(true);
+            qi.setBackgroundColor(Color.WHITE);
+            q.addView(qi, new LinearLayout.LayoutParams(ui.dp(220), Ui.WRAP));
+            ui.mar(qi, 0, 10, 0, 10);
+        } else {
+            ui.mar(ui.note(q, "Belum ada QRIS."), 0, 10, 0, 10);
+        }
+        Ui.Btn qp = ui.btn(q, "Pilih gambar QRIS", Ui.W, v -> Sys.pickImage(a, bmp -> {
+            String s = Ui.encodeScaled(bmp, 1000, 92);
+            if (s == null) {
+                ui.toast("Gambar gagal dipakai");
+                return;
+            }
+            Store.put(set, "qris", s);
+            st.save();
+            a.rebuild();
+            a.refreshHeader();
+        }));
+        ui.mt(qp, 4);
+        Ui.Btn qd = ui.btn(q, "Hapus QRIS", Ui.W, v -> ui.confirm("Hapus QRIS?", () -> {
+            Store.put(set, "qris", "");
+            Store.put(set, "qrisStruk", false);
+            st.save();
+            a.rebuild();
+            a.refreshHeader();
+        }));
+        ui.mt(qd, 8);
+        final CheckBox qc = new CheckBox(a);
+        qc.setText("Cetak QRIS di bawah struk");
+        qc.setTextColor(ui.th.cardInk);
+        qc.setTypeface(ui.th.font);
+        qc.setTextSize(14);
+        qc.setChecked(set.optBoolean("qrisStruk", false));
+        qc.setOnCheckedChangeListener((cb, on) -> {
+            Store.put(set, "qrisStruk", on);
+            st.save();
+        });
+        q.addView(qc, new LinearLayout.LayoutParams(Ui.MATCH, Ui.WRAP));
+        ui.mt(qc, 12);
+
         // ---- bantuan
         Ui.Card h = ui.card(into, Ui.NORMAL);
         ui.mt(h, 14);
@@ -202,6 +260,69 @@ public class SetScreen extends Screen {
         });
     }
 
+    // ------------------------------------------------------------------ tema DIY
+    private JSONObject diyDef(JSONObject set) {
+        JSONObject d = set.optJSONObject("diy");
+        if (d == null) {
+            d = new JSONObject();
+            Store.put(set, "diy", d);
+        }
+        String[][] defs = {{"c", "bulat"}, {"f", "sans"}, {"n", "melayang"}, {"bg", "#f4f1ea"}, {"cd", "#ffffff"}, {"ik", "#1f2937"}};
+        for (String[] x : defs) if (d.optString(x[0], "").isEmpty()) Store.put(d, x[0], x[1]);
+        return d;
+    }
+
+    private Ui.Select pick(LinearLayout card, String label, String[][] opts, final JSONObject d, final String key) {
+        ui.label(card, label);
+        final Ui.Select s = ui.select(card);
+        String[] l = new String[opts.length], v = new String[opts.length];
+        for (int i = 0; i < opts.length; i++) {
+            v[i] = opts[i][0];
+            l[i] = opts[i][1];
+        }
+        s.options(l, v).set(d.optString(key, v[0]));
+        s.onChange = () -> {
+            Store.put(d, key, s.value());
+            st.save();
+            a.restyle();
+        };
+        return s;
+    }
+
+    private void diyCard(LinearLayout into, final JSONObject set) {
+        final JSONObject d = diyDef(set);
+        Ui.Card c = ui.card(into, Ui.NORMAL);
+        ui.mt(c, 14);
+        ui.h2(c, "Tema DIY");
+        pick(c, "Bentuk kartu dan tombol", Th.DIY_SHAPES, d, "c");
+        pick(c, "Font", Th.DIY_FONTS, d, "f");
+        pick(c, "Navigasi bawah", Th.DIY_NAV, d, "n");
+        LinearLayout r = ui.row(c);
+        ui.mt(r, 4);
+        colorField(r, "Latar", d, "bg");
+        colorField(r, "Kartu", d, "cd");
+        colorField(r, "Teks", d, "ik");
+        ui.label(c, "Gambar latar (opsional)");
+        Ui.Btn pi = ui.btn(c, "Pilih gambar latar", Ui.W, v -> Sys.pickImage(a, bmp -> {
+            String s = Ui.encodeScaled(bmp, 720, 70);
+            if (s == null) {
+                ui.toast("Gambar gagal dipakai");
+                return;
+            }
+            Store.put(d, "img", s);
+            st.save();
+            a.restyle();
+        }));
+        ui.mt(pi, 4);
+        Ui.Btn px = ui.btn(c, "Hapus gambar latar", Ui.W, v -> {
+            Store.put(d, "img", "");
+            st.save();
+            a.restyle();
+        });
+        ui.mt(px, 8);
+        ui.mt(ui.note(c, "Warna utama dan aksen diatur di kartu Warna di bawah."), 10);
+    }
+
     // ------------------------------------------------------------------ pemilih warna
     private void colorField(LinearLayout row, String label, JSONObject set, String key) {
         LinearLayout c = ui.col(row);
@@ -215,7 +336,7 @@ public class SetScreen extends Screen {
         }));
         b.color(clr, Color.luminance(clr) > 0.5f ? 0xFF111111 : 0xFFFFFFFF);
         ui.size(b, -1, 44);
-        if (key.equals("c2")) ui.mar(c, 10, 0, 0, 0);
+        if (key.equals("c2") || key.equals("cd") || key.equals("ik")) ui.mar(c, 8, 0, 0, 0);
     }
 
     private interface Clr {

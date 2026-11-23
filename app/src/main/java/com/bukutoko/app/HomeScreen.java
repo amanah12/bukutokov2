@@ -196,7 +196,7 @@ public class HomeScreen extends Screen {
         pc.addView(dots, new LinearLayout.LayoutParams(Ui.MATCH, Ui.WRAP));
         ui.mar(dots, 0, 0, 0, 12);
         final List<View> dv = new ArrayList<>();
-        boolean sq = ui.th.id.equals("buku") || ui.th.id.equals("piksel");
+        boolean sq = ui.th.sq;
         for (int i = 0; i < pages; i++) {
             View d = new View(a);
             LinearLayout.LayoutParams lp = new LinearLayout.LayoutParams(ui.dp(sq ? 14 : 10), ui.dp(sq ? 14 : 10));
@@ -209,7 +209,7 @@ public class HomeScreen extends Screen {
             for (int i = 0; i < dv.size(); i++) {
                 Ui.Box db = new Ui.Box();
                 db.dn = ui.dn;
-                db.fill = i == cur ? (ui.th.id.equals("buku") || ui.th.id.equals("piksel") ? ui.th.c2 : ui.th.accent) : (sq ? ui.th.card : ui.th.sep);
+                db.fill = i == cur ? (ui.th.sq ? ui.th.c2 : ui.th.accent) : (sq ? ui.th.card : ui.th.sep);
                 db.bw = sq ? 3 : 0;
                 db.border = ui.th.ink;
                 db.r = sq ? 0 : 99;

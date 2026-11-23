@@ -105,7 +105,14 @@ public class MainActivity extends Activity {
     /** Bangun ulang kerangka (dipanggil saat tema/warna berubah). */
     public void buildAll() {
         JSONObject s = st.set();
-        th = Th.make(Store.str(s, "tema"), isNight(getResources().getConfiguration()), Store.str(s, "c1"), Store.str(s, "c2"));
+        if (!Th.valid(Store.str(s, "tema"))) { // tema lama (buku/neon/dll) -> Classic
+            String[] d = Th.def("classic");
+            Store.put(s, "tema", d[0]);
+            Store.put(s, "c1", d[2]);
+            Store.put(s, "c2", d[3]);
+            st.save();
+        }
+        th = Th.make(Store.str(s, "tema"), isNight(getResources().getConfiguration()), Store.str(s, "c1"), Store.str(s, "c2"), s.optJSONObject("diy"));
         ui = new Ui(this, th);
 
         rootV = new LinearLayout(this);
@@ -231,6 +238,8 @@ public class MainActivity extends Activity {
         ui.mar(r, 0, 0, 0, 14);
 
         Ui.Box lb = ui.boxFor(Ui.C1);
+        lb.setShape("");
+        lb.cr = null;
         lb.r = th.id.equals("imut") ? 99 : Math.min(th.cardR, 16);
         if (th.cardBw > 0 && th.cardBorder == 0) lb.bw = 0;
         LinearLayout lg = new LinearLayout(this);
@@ -264,11 +273,40 @@ public class MainActivity extends Activity {
         TextView d = ui.tv(t, new SimpleDateFormat("EEEE, d MMMM", new Locale("id", "ID")).format(new Date()), 14);
         d.setTextColor(th.mu);
 
+        if (!Store.str(st.set(), "qris").isEmpty()) {
+            Ui.Btn qb = ui.btn(r, "▣ QRIS", Ui.P, v -> showQris());
+            qb.padding(12, 8);
+            ui.mar(qb, 0, 0, 8, 0);
+        }
         Ui.Btn sb = ui.btn(r, "🧾 Struk", Ui.P, v -> show("struk"));
         sb.padding(12, 8);
         Ui.Btn cb = ui.btn(r, "⚙️", Ui.P, v -> show("cfg"));
         cb.padding(12, 8).text(18);
         ui.mar(cb, 8, 0, 0, 0);
+    }
+
+    /** Tampilkan gambar QRIS toko supaya pelanggan bisa scan. */
+    public void showQris() {
+        Bitmap bm = Ui.decode(Store.str(st.set(), "qris"));
+        if (bm == null) {
+            ui.toast("Belum ada QRIS");
+            return;
+        }
+        final Ui.Dlg d = ui.dialog();
+        LinearLayout b = d.card;
+        ui.h2(b, "Bayar dengan QRIS");
+        ImageView iv = new ImageView(this);
+        iv.setImageBitmap(bm);
+        iv.setAdjustViewBounds(true);
+        iv.setBackgroundColor(Color.WHITE);
+        iv.setScaleType(ImageView.ScaleType.FIT_CENTER);
+        b.addView(iv, new LinearLayout.LayoutParams(Ui.MATCH, Ui.WRAP));
+        ui.mt(iv, 10);
+        LinearLayout r = ui.row(b);
+        r.setGravity(Gravity.END | Gravity.CENTER_VERTICAL);
+        ui.mt(r, 12);
+        ui.btn(r, "Tutup", Ui.P, v -> d.close());
+        d.show();
     }
 
     // ------------------------------------------------------------------ navigasi

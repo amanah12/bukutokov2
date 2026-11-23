@@ -76,8 +76,12 @@ public class Ui {
     // ------------------------------------------------------------------ drawable
     public static class Box extends Drawable {
         public int fill, g1, g2, border, sdClr;
-        public boolean grad, dash, topOnly, shadowOn = true;
+        public boolean grad, dash, topOnly, shadowOn = true, gloss;
         public float r, bw, sx, sy, dn = 1;
+        public float[] cr;
+        public String shape = "";
+        public int tint, hole;
+        public float ins, padL, padX, padB; // dp, tambahan ruang untuk bentuk dekoratif
         private final Paint p = new Paint(Paint.ANTI_ALIAS_FLAG);
         private final Path path = new Path();
 
@@ -89,17 +93,91 @@ public class Ui {
             return sdClr != 0 ? sy * dn : 0;
         }
 
+        public int extL() {
+            return Math.round((ins + padL + padX) * dn);
+        }
+
+        public int extR() {
+            return Math.round((ins + padX) * dn);
+        }
+
+        public int extT() {
+            return Math.round(ins * dn);
+        }
+
+        public int extB() {
+            return Math.round((ins + padB) * dn);
+        }
+
+        public Box setShape(String s) {
+            shape = s == null ? "" : s;
+            ins = 0;
+            padL = 0;
+            padX = 0;
+            padB = 0;
+            switch (shape) {
+                case "solatip": ins = 14; break;
+                case "daun": ins = 10; padX = 2; break;
+                case "sobek": ins = 8; padX = 2; break;
+                case "lipat": ins = 6; break;
+                case "kertas": ins = 6; padL = 34; break;
+                case "memo": ins = 6; break;
+                case "jahit": ins = 4; padX = 2; break;
+                case "hexagon": padX = 14; break;
+                case "lancip": padX = 8; break;
+                case "miring": padX = 10; break;
+                case "acak": ins = 4; padX = 6; break;
+                case "lendir": padB = 14; break;
+                case "cat": ins = 4; padX = 12; break;
+                case "tape": padX = 6; break;
+                default: break;
+            }
+            return this;
+        }
+
         private void shape(RectF rc) {
             path.reset();
+            if (cr != null) {
+                float m = Math.min(rc.width(), rc.height()) / 2f;
+                float[] rr = new float[8];
+                for (int i = 0; i < 4; i++) {
+                    float v = Math.min(cr[i] * dn, m);
+                    rr[i * 2] = v;
+                    rr[i * 2 + 1] = v;
+                }
+                path.addRoundRect(rc, rr, Path.Direction.CW);
+                return;
+            }
             float rr = Math.min(r * dn, Math.min(rc.width(), rc.height()) / 2f);
             if (rr <= 0) path.addRect(rc, Path.Direction.CW);
             else if (topOnly) path.addRoundRect(rc, new float[]{rr, rr, rr, rr, 0, 0, 0, 0}, Path.Direction.CW);
             else path.addRoundRect(rc, rr, rr, Path.Direction.CW);
         }
 
+        private static int dark(int c, float f) {
+            return Th.mix(c, 0xFF000000, f);
+        }
+
+        private void gloss(Canvas cv, RectF body) {
+            cv.save();
+            cv.clipPath(path);
+            p.setStyle(Paint.Style.FILL);
+            p.setShader(new LinearGradient(0, body.top, 0, body.bottom,
+                    new int[]{0x45FFFFFF, 0x10FFFFFF, 0x00000000, 0x1C000000},
+                    new float[]{0f, 0.48f, 0.52f, 1f}, Shader.TileMode.CLAMP));
+            p.setColor(0xFF000000);
+            cv.drawRect(body, p);
+            p.setShader(null);
+            cv.restore();
+        }
+
         @Override
         public void draw(Canvas cv) {
             Rect b = getBounds();
+            if (!shape.isEmpty()) {
+                drawShape(cv, b);
+                return;
+            }
             float ex = ex(), ey = ey();
             RectF body = new RectF(b.left, b.top, b.right - ex, b.bottom - ey);
             if (body.width() <= 0 || body.height() <= 0) return;
@@ -125,6 +203,7 @@ public class Ui {
                 p.setColor(fill);
                 cv.drawPath(path, p);
             }
+            if (gloss && (fill != 0 || grad)) gloss(cv, body);
             if (bw > 0 && border != 0) {
                 float w = bw * dn;
                 RectF in = new RectF(body);
@@ -137,6 +216,391 @@ public class Ui {
                 if (dash) p.setPathEffect(new DashPathEffect(new float[]{dn * 7, dn * 5}, 0));
                 cv.drawPath(path, p);
                 p.setPathEffect(null);
+            }
+        }
+
+        // ---------------------------------------------------------- bentuk dekoratif
+        private void poly(float... xy) {
+            path.moveTo(xy[0], xy[1]);
+            for (int i = 2; i < xy.length; i += 2) path.lineTo(xy[i], xy[i + 1]);
+            path.close();
+        }
+
+        /** Tepi kertas sobek: atas dan bawah bergerigi (acak tetap). grow>0 = melebar keluar. */
+        private void jag(RectF b, float grow) {
+            path.reset();
+            java.util.Random rnd = new java.util.Random(7);
+            int n = Math.max(3, Math.round(b.width() / (9 * dn)));
+            float dx = b.width() / n, amp = 5 * dn;
+            float[] to = new float[n + 1], bo = new float[n + 1], jx = new float[n + 1];
+            for (int i = 0; i <= n; i++) {
+                to[i] = rnd.nextFloat() * amp + (rnd.nextInt(6) == 0 ? 3 * dn : 0);
+                bo[i] = rnd.nextFloat() * amp + (rnd.nextInt(6) == 0 ? 3 * dn : 0);
+                jx[i] = (rnd.nextFloat() - 0.5f) * dx * 0.7f;
+            }
+            path.moveTo(b.left - grow, b.top + to[0] - grow);
+            for (int i = 1; i < n; i++) path.lineTo(b.left + dx * i + jx[i], b.top + to[i] - grow);
+            path.lineTo(b.right + grow, b.top + to[n] - grow);
+            path.lineTo(b.right + grow, b.bottom - bo[n] + grow);
+            for (int i = n - 1; i > 0; i--) path.lineTo(b.left + dx * i + jx[i], b.bottom - bo[i] + grow);
+            path.lineTo(b.left - grow, b.bottom - bo[0] + grow);
+            path.close();
+        }
+
+        private void leaf(RectF b) {
+            float d = dn, R = Math.min(36 * d, Math.min(b.width(), b.height()) / 2f);
+            path.reset();
+            path.moveTo(b.left + R, b.top);
+            path.lineTo(b.right - 22 * d, b.top);
+            path.quadTo(b.right - 5 * d, b.top + 1 * d, b.right + 6 * d, b.top - 7 * d);
+            path.quadTo(b.right - 1 * d, b.top + 6 * d, b.right, b.top + 22 * d);
+            path.lineTo(b.right, b.bottom - R);
+            path.quadTo(b.right, b.bottom, b.right - R, b.bottom);
+            path.lineTo(b.left + 22 * d, b.bottom);
+            path.quadTo(b.left + 5 * d, b.bottom - 1 * d, b.left - 6 * d, b.bottom + 7 * d);
+            path.quadTo(b.left + 1 * d, b.bottom - 6 * d, b.left, b.bottom - 22 * d);
+            path.lineTo(b.left, b.top + R);
+            path.quadTo(b.left, b.top, b.left + R, b.top);
+            path.close();
+        }
+
+        private void buildPath(RectF b) {
+            path.reset();
+            float w = b.width(), h = b.height(), d = dn;
+            switch (shape) {
+                case "hexagon": {
+                    float k = Math.min(20 * d, w / 4);
+                    poly(b.left + k, b.top, b.right - k, b.top, b.right, b.centerY(), b.right - k, b.bottom, b.left + k, b.bottom, b.left, b.centerY());
+                    break;
+                }
+                case "lancip": {
+                    float k = Math.min(24 * d, w / 3);
+                    poly(b.left, b.top, b.right - k, b.top, b.right, b.centerY(), b.right - k, b.bottom, b.left, b.bottom);
+                    break;
+                }
+                case "miring": {
+                    float k = Math.min(16 * d, w / 4);
+                    poly(b.left + k, b.top, b.right, b.top, b.right - k, b.bottom, b.left, b.bottom);
+                    break;
+                }
+                case "acak":
+                    poly(b.left, b.top + 7 * d, b.left + .18f * w, b.top, b.left + .43f * w, b.top + 6 * d, b.left + .70f * w, b.top,
+                            b.right, b.top + 9 * d, b.left + .99f * w, b.top + .62f * h, b.right, b.bottom - 7 * d,
+                            b.left + .76f * w, b.bottom, b.left + .48f * w, b.bottom - 6 * d, b.left + .22f * w, b.bottom,
+                            b.left, b.bottom - 9 * d, b.left + .01f * w, b.top + .40f * h);
+                    break;
+                case "cat":
+                    path.addRoundRect(b, new float[]{.44f * w, .34f * h, .56f * w, .38f * h, .52f * w, .62f * h, .48f * w, .66f * h}, Path.Direction.CW);
+                    break;
+                case "lendir": {
+                    float dh = 14 * d;
+                    RectF top = new RectF(b.left, b.top, b.right, b.bottom - dh);
+                    path.addRoundRect(top, new float[]{18 * d, 18 * d, 18 * d, 18 * d, 0, 0, 0, 0}, Path.Direction.CW);
+                    float[][] dr = {{.10f, 18}, {.28f, 12}, {.52f, 22}, {.74f, 14}, {.91f, 17}};
+                    for (float[] q : dr) {
+                        Path o = new Path();
+                        float cx = b.left + q[0] * w;
+                        o.addOval(new RectF(cx - 9 * d, top.bottom - 10 * d, cx + 9 * d, top.bottom - 10 * d + q[1] * d), Path.Direction.CW);
+                        path.op(o, Path.Op.UNION);
+                    }
+                    break;
+                }
+                case "sobek":
+                    jag(b, 0);
+                    break;
+                case "daun":
+                    leaf(b);
+                    break;
+                case "lipat": {
+                    float k = Math.min(28 * d, Math.min(w, h) / 2);
+                    poly(b.left, b.top, b.right - k, b.top, b.right, b.top + k, b.right, b.bottom, b.left, b.bottom);
+                    break;
+                }
+                case "tape": {
+                    float t = Math.min(2.4f * d, h / 6);
+                    path.moveTo(b.left, b.top);
+                    path.lineTo(b.right, b.top);
+                    boolean in = true;
+                    for (float y = b.top + t; y < b.bottom; y += t) {
+                        path.lineTo(in ? b.right - t : b.right, y);
+                        in = !in;
+                    }
+                    path.lineTo(b.right, b.bottom);
+                    path.lineTo(b.left, b.bottom);
+                    in = true;
+                    for (float y = b.bottom - t; y > b.top; y -= t) {
+                        path.lineTo(in ? b.left + t : b.left, y);
+                        in = !in;
+                    }
+                    path.close();
+                    break;
+                }
+                case "kaca":
+                    path.addRoundRect(b, 24 * d, 24 * d, Path.Direction.CW);
+                    break;
+                case "jahit":
+                    path.addRoundRect(b, Math.min(r > 0 ? r * d : 14 * d, h / 2), Math.min(r > 0 ? r * d : 14 * d, h / 2), Path.Direction.CW);
+                    break;
+                default: // solatip, kertas, memo
+                    path.addRoundRect(b, 3 * d, 3 * d, Path.Direction.CW);
+            }
+        }
+
+        /** Bayangan lembut berlapis (tanpa blur, aman di hardware canvas). */
+        private void softShadow(Canvas cv, Path pth, float dy, float dxo, int n, int a) {
+            p.setShader(null);
+            p.setPathEffect(null);
+            p.setStyle(Paint.Style.FILL_AND_STROKE);
+            p.setStrokeJoin(Paint.Join.ROUND);
+            for (int i = n; i >= 1; i--) {
+                p.setStrokeWidth(i * 1.7f * dn);
+                p.setColor(a << 24);
+                cv.save();
+                cv.translate(dxo * dn, dy * dn);
+                cv.drawPath(pth, p);
+                cv.restore();
+            }
+            p.setStrokeWidth(0);
+            p.setStyle(Paint.Style.FILL);
+        }
+
+        private void tape(Canvas cv, float cx, float cy, float deg) {
+            float hw = 27 * dn, hh = 9 * dn, t = 2.2f * dn;
+            Path tp = new Path();
+            tp.moveTo(-hw, -hh);
+            tp.lineTo(hw, -hh);
+            boolean in = true;
+            for (float y = -hh + t; y < hh; y += t) {
+                tp.lineTo(in ? hw - t : hw, y);
+                in = !in;
+            }
+            tp.lineTo(hw, hh);
+            tp.lineTo(-hw, hh);
+            in = true;
+            for (float y = hh - t; y > -hh; y -= t) {
+                tp.lineTo(in ? -hw + t : -hw, y);
+                in = !in;
+            }
+            tp.close();
+            cv.save();
+            cv.translate(cx, cy);
+            cv.rotate(deg);
+            p.setStyle(Paint.Style.FILL);
+            p.setShader(null);
+            p.setColor(0x26000000);
+            cv.save();
+            cv.translate(0, 1.6f * dn);
+            cv.drawPath(tp, p);
+            cv.restore();
+            int tc = Th.alpha(Th.mix(tint == 0 ? 0xFFFFD966 : tint, 0xFFFFFFFF, 0.30f), 0xC4);
+            p.setColor(tc);
+            cv.drawPath(tp, p);
+            p.setColor(0x58FFFFFF);
+            cv.drawRect(-hw + 3 * dn, -hh * 0.55f, hw - 3 * dn, -hh * 0.12f, p);
+            p.setStyle(Paint.Style.STROKE);
+            p.setStrokeWidth(Math.max(1f, dn * 0.8f));
+            p.setColor(0x22000000);
+            cv.drawPath(tp, p);
+            p.setStyle(Paint.Style.FILL);
+            cv.restore();
+        }
+
+        private void veins(Canvas cv, RectF b) {
+            float x0 = b.left + 6 * dn, y0 = b.bottom - 6 * dn, x1 = b.right - 6 * dn, y1 = b.top + 6 * dn;
+            float ux = x1 - x0, uy = y1 - y0, len = (float) Math.hypot(ux, uy);
+            ux /= len;
+            uy /= len;
+            float nx = -uy, ny = ux;
+            int vc = tint == 0 ? 0xFF5AA24A : tint;
+            p.setStyle(Paint.Style.STROKE);
+            p.setStrokeCap(Paint.Cap.ROUND);
+            p.setStrokeWidth(1.3f * dn);
+            p.setColor(Th.alpha(vc, 0x34));
+            int n = Math.max(5, Math.min(14, Math.round(len / (34 * dn))));
+            for (int i = 1; i < n; i++) {
+                float t = i / (float) n;
+                float px = x0 + (x1 - x0) * t, py = y0 + (y1 - y0) * t;
+                float l = Math.min(b.width(), b.height()) * 0.30f * (float) Math.sin(Math.PI * t) + 10 * dn;
+                cv.drawLine(px, py, px + (ux * 0.9f + nx) * l, py + (uy * 0.9f + ny) * l, p);
+                cv.drawLine(px, py, px + (ux * 0.9f - nx) * l, py + (uy * 0.9f - ny) * l, p);
+            }
+            p.setStrokeWidth(2.2f * dn);
+            p.setColor(Th.alpha(vc, 0x5A));
+            cv.drawLine(x0 - 6 * dn, y0 + 6 * dn, x1, y1, p);
+            p.setStrokeCap(Paint.Cap.BUTT);
+            p.setStyle(Paint.Style.FILL);
+        }
+
+        private void drawShape(Canvas cv, Rect bd) {
+            float in = ins * dn;
+            RectF body = new RectF(bd.left + in, bd.top + in, bd.right - in, bd.bottom - in);
+            if (body.width() <= 0 || body.height() <= 0) return;
+            float d = dn;
+            boolean small = shape.equals("tape") || shape.equals("jahit") && body.height() < 80 * d;
+            int fc = fill != 0 ? fill : 0xFFFFFFFF;
+
+            if (shape.equals("sobek")) {
+                jag(body, 2.6f * d);
+                Path outer = new Path(path);
+                jag(body, 0);
+                Path inner = new Path(path);
+                softShadow(cv, outer, 3, 0, 5, 0x0C);
+                p.setStyle(Paint.Style.FILL);
+                p.setShader(null);
+                p.setColor(Th.mix(fc, 0xFFFFFFFF, 0.78f));
+                cv.drawPath(outer, p);
+                p.setShader(new LinearGradient(0, body.top, 0, body.bottom, Th.mix(fc, 0xFFFFFFFF, 0.06f), dark(fc, 0.07f), Shader.TileMode.CLAMP));
+                p.setColor(0xFF000000);
+                cv.drawPath(inner, p);
+                p.setShader(null);
+                cv.save();
+                cv.clipPath(inner);
+                p.setShader(new LinearGradient(0, body.bottom - 16 * d, 0, body.bottom, 0x00000000, 0x26000000, Shader.TileMode.CLAMP));
+                cv.drawRect(body.left, body.bottom - 16 * d, body.right, body.bottom, p);
+                p.setShader(new LinearGradient(0, body.top, 0, body.top + 12 * d, 0x1A000000, 0x00000000, Shader.TileMode.CLAMP));
+                cv.drawRect(body.left, body.top, body.right, body.top + 12 * d, p);
+                p.setShader(null);
+                cv.restore();
+                return;
+            }
+
+            buildPath(body);
+            Path sp = new Path(path);
+            if (shape.equals("memo")) softShadow(cv, sp, 4, 1.5f, 5, 0x10);
+            else if (!small) softShadow(cv, sp, shape.equals("kaca") ? 5 : 3.5f, 0, 5, 0x0E);
+
+            // isi
+            p.setStyle(Paint.Style.FILL);
+            if (grad) {
+                p.setShader(new LinearGradient(body.left, body.top, body.right, body.bottom, g1, g2, Shader.TileMode.CLAMP));
+                p.setColor(0xFF000000);
+            } else if (shape.equals("daun")) {
+                p.setShader(new LinearGradient(body.left, body.bottom, body.right, body.top,
+                        Th.mix(fc, tint == 0 ? 0xFF5AA24A : tint, 0.22f), fc, Shader.TileMode.CLAMP));
+                p.setColor(0xFF000000);
+            } else if (shape.equals("kaca")) {
+                p.setShader(null);
+                p.setColor(fc);
+            } else if (small) {
+                p.setShader(null);
+                p.setColor(fc);
+            } else {
+                p.setShader(new LinearGradient(0, body.top, 0, body.bottom, Th.mix(fc, 0xFFFFFFFF, 0.05f), dark(fc, 0.04f), Shader.TileMode.CLAMP));
+                p.setColor(0xFF000000);
+            }
+            cv.drawPath(sp, p);
+            p.setShader(null);
+
+            cv.save();
+            cv.clipPath(sp);
+            switch (shape) {
+                case "kertas": {
+                    p.setStyle(Paint.Style.STROKE);
+                    p.setStrokeWidth(Math.max(1f, d * 1.1f));
+                    p.setColor(0x405B8DEF);
+                    for (float y = body.top + 30 * d; y < body.bottom - 6 * d; y += 22 * d)
+                        cv.drawLine(body.left + 3 * d, y, body.right - 3 * d, y, p);
+                    p.setStrokeWidth(1.5f * d);
+                    p.setColor(0x70E0605A);
+                    cv.drawLine(body.left + 32 * d, body.top, body.left + 32 * d, body.bottom, p);
+                    p.setStyle(Paint.Style.FILL);
+                    int hc = hole != 0 ? hole : 0xFFDDDDDD;
+                    float[] fy = {0.2f, 0.5f, 0.8f};
+                    for (float f : fy) {
+                        float cx = body.left + 14 * d, cy = body.top + body.height() * f;
+                        p.setColor(0x30000000);
+                        cv.drawCircle(cx, cy + 1.2f * d, 6.2f * d, p);
+                        p.setColor(hc);
+                        cv.drawCircle(cx, cy, 5.6f * d, p);
+                    }
+                    p.setShader(new LinearGradient(body.left, 0, body.left + 8 * d, 0, 0x1E000000, 0x00000000, Shader.TileMode.CLAMP));
+                    cv.drawRect(body.left, body.top, body.left + 8 * d, body.bottom, p);
+                    p.setShader(null);
+                    break;
+                }
+                case "memo": {
+                    p.setShader(new LinearGradient(0, body.top, 0, body.top + 18 * d, 0x22000000, 0x00000000, Shader.TileMode.CLAMP));
+                    cv.drawRect(body.left, body.top, body.right, body.top + 18 * d, p);
+                    p.setShader(new LinearGradient(0, body.bottom - 16 * d, 0, body.bottom, 0x00000000, 0x2A000000, Shader.TileMode.CLAMP));
+                    cv.drawRect(body.left, body.bottom - 16 * d, body.right, body.bottom, p);
+                    p.setShader(null);
+                    p.setColor(0x20000000);
+                    Path c = new Path();
+                    c.moveTo(body.right - 30 * d, body.bottom);
+                    c.lineTo(body.right, body.bottom - 30 * d);
+                    c.lineTo(body.right, body.bottom);
+                    c.close();
+                    cv.drawPath(c, p);
+                    break;
+                }
+                case "daun":
+                    veins(cv, body);
+                    break;
+                case "kaca": {
+                    p.setShader(new LinearGradient(body.left, body.top, body.right, body.bottom,
+                            new int[]{0x66FFFFFF, 0x14FFFFFF, 0x00FFFFFF, 0x22FFFFFF}, new float[]{0f, 0.35f, 0.7f, 1f}, Shader.TileMode.CLAMP));
+                    cv.drawRect(body, p);
+                    p.setShader(null);
+                    break;
+                }
+                case "lipat": {
+                    float k = Math.min(28 * d, Math.min(body.width(), body.height()) / 2);
+                    Path fl = new Path();
+                    fl.moveTo(body.right - k, body.top);
+                    fl.lineTo(body.right, body.top + k);
+                    fl.lineTo(body.right - k, body.top + k);
+                    fl.close();
+                    cv.restore();
+                    cv.save();
+                    p.setStyle(Paint.Style.FILL);
+                    p.setColor(0x30000000);
+                    cv.save();
+                    cv.translate(-1.8f * d, 2.2f * d);
+                    cv.drawPath(fl, p);
+                    cv.restore();
+                    p.setShader(new LinearGradient(body.right - k, body.top + k, body.right, body.top,
+                            dark(fc, 0.22f), Th.mix(fc, 0xFFFFFFFF, 0.25f), Shader.TileMode.CLAMP));
+                    p.setColor(0xFF000000);
+                    cv.drawPath(fl, p);
+                    p.setShader(null);
+                    p.setStyle(Paint.Style.STROKE);
+                    p.setStrokeWidth(Math.max(1f, d));
+                    p.setColor(0x26000000);
+                    cv.drawLine(body.right - k, body.top, body.right, body.top + k, p);
+                    p.setStyle(Paint.Style.FILL);
+                    break;
+                }
+                default:
+                    break;
+            }
+            cv.restore();
+
+            if (gloss && small) gloss(cv, body);
+            if (shape.equals("jahit")) {
+                RectF st = new RectF(body);
+                float gap = (small ? 3 : 5) * d;
+                st.inset(gap, gap);
+                Path sw = new Path();
+                float rr = Math.max(2 * d, Math.min(small ? 9 * d : 10 * d, st.height() / 2));
+                sw.addRoundRect(st, rr, rr, Path.Direction.CW);
+                p.setStyle(Paint.Style.STROKE);
+                p.setStrokeWidth(1.7f * d);
+                p.setColor(tint != 0 ? tint : 0x99000000);
+                p.setPathEffect(new DashPathEffect(new float[]{6 * d, 4 * d}, 0));
+                cv.drawPath(sw, p);
+                p.setPathEffect(null);
+                p.setStyle(Paint.Style.FILL);
+            }
+            if (shape.equals("solatip")) {
+                tape(cv, body.left + 14 * d, body.top + 6 * d, -38);
+                tape(cv, body.right - 14 * d, body.top + 6 * d, 38);
+            }
+            if (shape.equals("kaca") && bw > 0 && border != 0) {
+                p.setStyle(Paint.Style.STROKE);
+                p.setStrokeWidth(bw * d);
+                p.setColor(border);
+                cv.drawPath(sp, p);
+                p.setStyle(Paint.Style.FILL);
             }
         }
 
@@ -154,7 +618,7 @@ public class Ui {
         }
     }
 
-    /** Latar halaman: warna + kisi + cahaya radial. */
+    /** Latar halaman: warna + kisi / garis buku + cahaya radial + gambar latar. */
     public static class PageBg extends Drawable {
         private final Th th;
         private final float dn;
@@ -169,6 +633,17 @@ public class Ui {
         public void draw(Canvas cv) {
             Rect b = getBounds();
             cv.drawColor(th.bg);
+            if (th.bgBmp != null) {
+                Bitmap bm = th.bgBmp;
+                float sc = Math.max(b.width() / (float) bm.getWidth(), b.height() / (float) bm.getHeight());
+                float sw = b.width() / sc, sh = b.height() / sc;
+                Rect src = new Rect(Math.round((bm.getWidth() - sw) / 2f), Math.round((bm.getHeight() - sh) / 2f),
+                        Math.round((bm.getWidth() + sw) / 2f), Math.round((bm.getHeight() + sh) / 2f));
+                cv.drawBitmap(bm, src, b, p);
+                p.setStyle(Paint.Style.FILL);
+                p.setColor(Th.alpha(th.bg, 0x99));
+                cv.drawRect(b, p);
+            }
             if (th.grid != 0) {
                 p.setStyle(Paint.Style.STROKE);
                 p.setStrokeWidth(Math.max(1f, dn));
@@ -176,6 +651,16 @@ public class Ui {
                 float step = 22 * dn;
                 for (float x = b.left; x < b.right; x += step) cv.drawLine(x, b.top, x, b.bottom, p);
                 for (float y = b.top; y < b.bottom; y += step) cv.drawLine(b.left, y, b.right, y, p);
+            }
+            if (th.lined) {
+                p.setStyle(Paint.Style.STROKE);
+                p.setStrokeWidth(Math.max(1f, dn));
+                p.setColor(0x668FB0D4);
+                float step = 32 * dn;
+                for (float y = b.top + step - dn; y < b.bottom; y += step) cv.drawLine(b.left, y, b.right, y, p);
+                p.setStrokeWidth(2 * dn);
+                p.setColor(0x88D9534F);
+                cv.drawLine(b.left + 31 * dn, b.top, b.left + 31 * dn, b.bottom, p);
             }
             p.setStyle(Paint.Style.FILL);
             for (int i = 0; i < th.glowClr.length; i++) {
@@ -302,22 +787,29 @@ public class Ui {
         b.sx = th.cardSx;
         b.sy = th.cardSy;
         b.sdClr = th.cardSdClr;
+        b.cr = th.cardCr;
         if (kind == C1) b.fill = th.c1;
         else if (kind == C2) b.fill = th.c2;
         else if (kind == DIALOG) {
             b.fill = th.card;
-            if (b.sdClr == 0) b.sdClr = 0x55000000;
+            if (b.sdClr == 0 && th.shape.isEmpty()) b.sdClr = 0x55000000;
             if (b.sx == 0 && b.sy == 0) b.sy = 6;
         } else if (th.cardGrad) {
             b.grad = true;
             b.g1 = th.cardG1;
             b.g2 = th.cardG2;
         } else b.fill = th.card;
+        if (!th.shape.isEmpty()) {
+            b.setShape(th.shape);
+            b.tint = th.shape.equals("jahit") ? Th.alpha(th.ink, 0x99) : th.tint;
+            b.hole = th.bg;
+            b.sdClr = 0;
+        }
         return b;
     }
 
     public void pad(View v, Box b, float l, float t, float r, float bt) {
-        v.setPadding(dp(l), dp(t), dp(r) + Math.round(b.ex()), dp(bt) + Math.round(b.ey()));
+        v.setPadding(dp(l) + b.extL(), dp(t) + b.extT(), dp(r) + Math.round(b.ex()) + b.extR(), dp(bt) + Math.round(b.ey()) + b.extB());
     }
 
     public Card card(ViewGroup p, int kind) {
@@ -390,7 +882,7 @@ public class Ui {
         Box b = new Box();
         b.dn = dn;
         b.fill = bg;
-        b.bw = th.id.equals("piksel") || th.id.equals("buku") ? 2 : 0;
+        b.bw = th.sq ? 2 : 0;
         b.border = th.ink;
         b.r = th.btnR > 0 ? 99 : 0;
         t.setBackground(b);
@@ -407,7 +899,7 @@ public class Ui {
         b.dn = dn;
         b.border = th.sep;
         b.bw = 2;
-        b.dash = th.id.equals("buku") || th.id.equals("piksel");
+        b.dash = th.sq;
         if (!b.dash) {
             b.bw = 0;
             b.fill = th.sep;
@@ -505,11 +997,18 @@ public class Ui {
             b.sx = th.btnSx;
             b.sy = th.btnSy;
             b.sdClr = th.btnSdClr;
+            b.cr = th.btnCr;
+            b.gloss = th.btnGloss;
+            if (!th.btnShape.isEmpty()) {
+                b.setShape(th.btnShape);
+                b.tint = Th.alpha(ink, 0xAA);
+                b.sdClr = 0;
+            }
             if (kind == NORMAL && th.cardGrad && style != R) b.sdClr = 0;
             box = b;
             setBackground(b);
             setTextColor(ink);
-            setPadding(dp(padH), dp(padV), dp(padH) + Math.round(b.ex()), dp(padV) + Math.round(b.ey()));
+            setPadding(dp(padH) + b.extL(), dp(padV) + b.extT(), dp(padH) + Math.round(b.ex()) + b.extR(), dp(padV) + Math.round(b.ey()) + b.extB());
         }
 
         @Override
@@ -550,7 +1049,7 @@ public class Ui {
         EditText e = new EditText(c);
         e.setHint(hint);
         e.setHintTextColor(th.mu);
-        e.setTextColor(th.ink);
+        e.setTextColor(th.inputInk);
         e.setTypeface(th.font);
         e.setTextSize(17);
         e.setInputType(type);
@@ -623,7 +1122,7 @@ public class Ui {
             super(Ui.this.c);
             setTypeface(th.font);
             setTextSize(17);
-            setTextColor(th.ink);
+            setTextColor(th.inputInk);
             setBackground(inputBox());
             setPadding(dp(10), dp(9), dp(10), dp(9));
             setMinHeight(dp(46));
@@ -742,7 +1241,12 @@ public class Ui {
             int x = 0, y = 0, rowH = 0;
             for (int i = 0; i < getChildCount(); i++) {
                 View v = getChildAt(i);
-                v.measure(MeasureSpec.makeMeasureSpec(maxW, MeasureSpec.AT_MOST), MeasureSpec.UNSPECIFIED);
+                ViewGroup.LayoutParams lp = v.getLayoutParams();
+                int ws = MeasureSpec.makeMeasureSpec(maxW, MeasureSpec.AT_MOST);
+                int hs = MeasureSpec.makeMeasureSpec(0, MeasureSpec.UNSPECIFIED);
+                if (lp != null && lp.width > 0) ws = MeasureSpec.makeMeasureSpec(lp.width, MeasureSpec.EXACTLY);
+                if (lp != null && lp.height > 0) hs = MeasureSpec.makeMeasureSpec(lp.height, MeasureSpec.EXACTLY);
+                v.measure(ws, hs);
                 int w = v.getMeasuredWidth(), h = v.getMeasuredHeight();
                 if (x > 0 && x + w > maxW) {
                     x = 0;
@@ -839,6 +1343,23 @@ public class Ui {
             return null;
         }
         return b;
+    }
+
+    /** Perkecil (tanpa dipotong) lalu simpan sebagai JPEG base64, latar putih. */
+    public static String encodeScaled(Bitmap src, int maxDim, int quality) {
+        try {
+            float k = Math.min(1f, maxDim / (float) Math.max(src.getWidth(), src.getHeight()));
+            int w = Math.max(1, Math.round(src.getWidth() * k)), h = Math.max(1, Math.round(src.getHeight() * k));
+            Bitmap out = Bitmap.createBitmap(w, h, Bitmap.Config.ARGB_8888);
+            Canvas cv = new Canvas(out);
+            cv.drawColor(0xFFFFFFFF);
+            cv.drawBitmap(src, null, new Rect(0, 0, w, h), new Paint(Paint.FILTER_BITMAP_FLAG));
+            java.io.ByteArrayOutputStream bo = new java.io.ByteArrayOutputStream();
+            out.compress(Bitmap.CompressFormat.JPEG, quality, bo);
+            return "data:image/jpeg;base64," + Base64.encodeToString(bo.toByteArray(), Base64.NO_WRAP);
+        } catch (Exception e) {
+            return null;
+        }
     }
 
     public static String encodeJpeg(Bitmap src, int size, int quality) {

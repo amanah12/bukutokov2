@@ -664,7 +664,16 @@ public class StrukScreen extends Screen {
 
     private void showStruk(final JSONArray M, final String fn) {
         final Bitmap logo = Ui.decode(Store.str(st.set(), "logo"));
-        final Bitmap bm = Receipt.render(M, logo);
+        Bitmap qr = Ui.decode(Store.str(st.set(), "qris"));
+        boolean useQ = qr != null && st.set().optBoolean("qrisStruk", false);
+        JSONArray M2 = M;
+        if (useQ) {
+            M2 = new JSONArray();
+            for (int i = 0; i < M.length(); i++) M2.put(M.opt(i));
+            M2.put(Receipt.sep());
+            M2.put(Receipt.cell("qr", null, null, 0));
+        }
+        final Bitmap bm = Receipt.render(M2, logo, useQ ? qr : null);
         final String text = Receipt.text(M);
         final Ui.Dlg d = ui.dialog();
         LinearLayout b = d.card;

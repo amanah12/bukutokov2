@@ -95,6 +95,10 @@ public class Receipt {
     }
 
     public static Bitmap render(JSONArray M, Bitmap logo) {
+        return render(M, logo, null);
+    }
+
+    public static Bitmap render(JSONArray M, Bitmap logo, Bitmap qr) {
         Typeface reg = Typeface.create(Typeface.MONOSPACE, Typeface.NORMAL);
         Typeface bld = Typeface.create(Typeface.MONOSPACE, Typeface.BOLD);
         Paint p = new Paint(Paint.ANTI_ALIAS_FLAG);
@@ -140,6 +144,9 @@ public class Receipt {
                     break;
                 case "big":
                     it.h = 54;
+                    break;
+                case "qr":
+                    it.h = qr != null ? 250 : 0;
                     break;
                 default:
                     it.h = 0;
@@ -210,6 +217,18 @@ public class Receipt {
                     p.setTextSize(30);
                     p.setTextAlign(Paint.Align.RIGHT);
                     txt(cv, p, Store.str(c, "b"), W - P, it.y + 9);
+                    break;
+                case "qr":
+                    if (qr != null) {
+                        float k = Math.min(200f / qr.getWidth(), 200f / qr.getHeight());
+                        float qw = qr.getWidth() * k, qh = qr.getHeight() * k;
+                        cv.drawBitmap(qr, null, new RectF(W / 2f - qw / 2, it.y + 4, W / 2f + qw / 2, it.y + 4 + qh), p);
+                        p.setTypeface(reg);
+                        p.setTextSize(16);
+                        p.setColor(ink);
+                        p.setTextAlign(Paint.Align.CENTER);
+                        txt(cv, p, "Scan untuk bayar (QRIS)", W / 2f, it.y + 216);
+                    }
                     break;
                 default:
                     break;

@@ -57,7 +57,7 @@ public class Tutorial {
         dots.setGravity(Gravity.CENTER);
         b.addView(dots, new LinearLayout.LayoutParams(Ui.MATCH, Ui.WRAP));
         ui.mt(dots, 16);
-        boolean sq = ui.th.id.equals("buku") || ui.th.id.equals("piksel");
+        boolean sq = ui.th.sq;
         for (int i = 0; i < TUT.length; i++) {
             View v = new View(a);
             Ui.Box bx = new Ui.Box();

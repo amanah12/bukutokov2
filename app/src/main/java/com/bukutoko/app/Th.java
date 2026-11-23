@@ -296,7 +296,7 @@ public class Th {
         t.dark = Color.luminance(t.bg) < 0.4f;
         t.inClr = Color.luminance(cd) < 0.4f ? css("5dff9a") : css("1a8a4a");
         t.inputBg = glass ? alpha(cd, 0x99) : cd;
-        t.wBg = alpha(t.ink, 0x14); t.wBw = 1; t.wBorder = alpha(t.ink, 0x33);
+        t.wBg = mix(cd, t.ink | 0xFF000000, 0.09f) | 0xFF000000; t.wBw = 1; t.wBorder = alpha(t.ink, 0x33);
         t.sep = alpha(t.ink, 0x22);
         t.accent = t.c1;
         t.cardInk = t.ink;

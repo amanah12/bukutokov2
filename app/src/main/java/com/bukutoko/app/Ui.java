@@ -184,12 +184,17 @@ public class Ui {
             if (sdClr != 0 && shadowOn && (ex > 0 || ey > 0)) {
                 RectF sh = new RectF(body);
                 sh.offset(ex, ey);
+                // bayangan hanya di luar badan, supaya isi tembus pandang tidak jadi gelap
+                cv.save();
+                shape(body);
+                cv.clipPath(path, android.graphics.Region.Op.DIFFERENCE);
                 shape(sh);
                 p.setShader(null);
                 p.setPathEffect(null);
                 p.setStyle(Paint.Style.FILL);
                 p.setColor(sdClr);
                 cv.drawPath(path, p);
+                cv.restore();
             }
             shape(body);
             p.setPathEffect(null);

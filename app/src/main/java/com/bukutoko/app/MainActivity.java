@@ -13,6 +13,8 @@ import android.view.View;
 import android.view.ViewGroup;
 import android.view.Window;
 import android.view.WindowManager;
+import android.view.animation.DecelerateInterpolator;
+import android.view.animation.OvershootInterpolator;
 import android.view.inputmethod.InputMethodManager;
 import android.widget.FrameLayout;
 import android.widget.ImageView;
@@ -33,7 +35,12 @@ public class MainActivity extends Activity {
 
     private LinearLayout rootV, headerBox, content;
     private LinearLayout tabBar;
-    private ScrollView scroll;
+    private FrameLayout frameRoot;
+    private SmoothScroll scroll;
+    private Motion motion;
+    private LiquidBar liquid;
+    private Fx fx;
+    private boolean liquidOn, motionOn, revealOn, gustOn, homeShown;
     private Screen cur;
     public String curKey = "home";
 
@@ -53,8 +60,7 @@ public class MainActivity extends Activity {
         super.onCreate(b);
         st = new Store(this);
         buildAll();
-        show("home");
-        if (!st.S.optBoolean("seen", false)) Tutorial.show(this);
+        showSplash(!st.S.optBoolean("seen", false));
     }
 
     @Override
@@ -62,7 +68,7 @@ public class MainActivity extends Activity {
         super.onConfigurationChanged(c);
         String k = curKey;
         buildAll();
-        show(k);
+        show(k, false);
     }
 
     @Override
@@ -114,22 +120,22 @@ public class MainActivity extends Activity {
         }
         th = Th.make(Store.str(s, "tema"), isNight(getResources().getConfiguration()), Store.str(s, "c1"), Store.str(s, "c2"), s.optJSONObject("diy"));
         ui = new Ui(this, th);
+        loadFlags();
 
+        frameRoot = new FrameLayout(this);
+        frameRoot.setClipChildren(false);
         rootV = new LinearLayout(this);
         rootV.setOrientation(LinearLayout.VERTICAL);
         rootV.setBackground(new Ui.PageBg(th, ui.dn));
 
-        scroll = new ScrollView(this);
-        scroll.setFillViewport(true);
-        scroll.setClipChildren(false);
-        scroll.setClipToPadding(false);
+        scroll = new SmoothScroll(this);
         rootV.addView(scroll, new LinearLayout.LayoutParams(Ui.MATCH, 0, 1f));
 
         FrameLayout frame = new FrameLayout(this);
         scroll.addView(frame, new ViewGroup.LayoutParams(Ui.MATCH, Ui.WRAP));
         LinearLayout main = new LinearLayout(this);
         main.setOrientation(LinearLayout.VERTICAL);
-        main.setPadding(ui.dp(14), ui.dp(14), ui.dp(14), ui.dp(24));
+        main.setPadding(ui.dp(14), ui.dp(14), ui.dp(14), ui.dp(liquidOn ? 104 : 24));
         main.setClipChildren(false);
         main.setClipToPadding(false);
         int w = Math.min(ui.screenW(), ui.dp(640));
@@ -144,13 +150,39 @@ public class MainActivity extends Activity {
         content.setClipToPadding(false);
         main.addView(content, new LinearLayout.LayoutParams(Ui.MATCH, Ui.WRAP));
 
-        buildTabs();
-        setContentView(rootV);
+        motion = new Motion(scroll, content, ui.dn);
+        scroll.setOnScroll((y, oy) -> {
+            motion.check();
+            if (motionOn) motion.tilt(true);
+        });
+        content.addOnLayoutChangeListener((v, l, t, r, b, ol, ot, or, ob) -> {
+            motion.check();
+            if (motionOn) motion.tilt(true);
+        });
+
+        frameRoot.addView(rootV, new FrameLayout.LayoutParams(Ui.MATCH, Ui.MATCH));
+        liquid = null;
+        if (liquidOn) {
+            liquid = new LiquidBar(this, th, ui.dn, TAB_LABELS, i -> onTab(TAB_KEYS[i]));
+            int bw = Math.min(ui.screenW() - ui.dp(20), ui.dp(560));
+            FrameLayout.LayoutParams lp = new FrameLayout.LayoutParams(bw, Ui.WRAP, Gravity.BOTTOM | Gravity.CENTER_HORIZONTAL);
+            lp.bottomMargin = ui.dp(4);
+            frameRoot.addView(liquid, lp);
+        } else {
+            buildTabs();
+        }
+        fx = new Fx(this, ui.dn);
+        frameRoot.addView(fx, new FrameLayout.LayoutParams(Ui.MATCH, Ui.MATCH));
+        fx.setTick(() -> {
+            if (motion != null) motion.sway(fx == null ? 0f : fx.windX, gustOn);
+        });
+        setContentView(frameRoot);
+        applyFx();
 
         Window win = getWindow();
         win.addFlags(WindowManager.LayoutParams.FLAG_DRAWS_SYSTEM_BAR_BACKGROUNDS);
         win.setStatusBarColor(th.bg);
-        int navClr = th.tabFloat ? th.bg : (th.tabGrad ? th.tabG2 : th.tabBg);
+        int navClr = (liquidOn || th.tabFloat) ? th.bg : (th.tabGrad ? th.tabG2 : th.tabBg);
         win.setNavigationBarColor(navClr);
         boolean lightBg = !th.dark && Color.luminance(th.bg) > 0.5f;
         boolean lightNav = Color.luminance(navClr) > 0.5f;
@@ -202,7 +234,7 @@ public class MainActivity extends Activity {
             t.setGravity(Gravity.CENTER);
             t.setSingleLine(true);
             t.setPadding(ui.dp(4), ui.dp(th.tabR == 0 ? 15 : 12), ui.dp(4), ui.dp(th.tabR == 0 ? 15 : 12));
-            t.setOnClickListener(v -> show(k));
+            t.setOnClickListener(v -> onTab(k));
             tabBar.addView(t, new LinearLayout.LayoutParams(0, Ui.WRAP, 1f));
             tabViews[i] = t;
             if (th.tabDiv && i < 4) {
@@ -217,6 +249,12 @@ public class MainActivity extends Activity {
     }
 
     private void tabHighlight() {
+        if (liquid != null) {
+            int idx = -1;
+            for (int i = 0; i < 5; i++) if (TAB_KEYS[i].equals(curKey)) idx = i;
+            liquid.select(idx, true);
+            return;
+        }
         for (int i = 0; i < 5; i++) {
             boolean on = TAB_KEYS[i].equals(curKey);
             TextView t = tabViews[i];
@@ -340,15 +378,29 @@ public class MainActivity extends Activity {
         }
     }
 
+    /** Ketuk tab: pindah layar, atau gulir halus ke atas kalau sudah di tab itu. */
+    private void onTab(String k) {
+        if (k.equals(curKey)) scroll.smoothTop();
+        else show(k);
+    }
+
     public void show(String key) {
+        show(key, true);
+    }
+
+    private void show(String key, boolean anim) {
         hideKeyboard();
+        homeShown = true;
         curKey = key;
         cur = make(key);
         buildHeader();
+        motion.clear();
         content.removeAllViews();
         cur.build(content);
         scroll.scrollTo(0, 0);
         tabHighlight();
+        motion.reveal(anim && revealOn);
+        motion.tilt(motionOn);
     }
 
     /** Dipanggil setelah data berubah. */
@@ -360,9 +412,13 @@ public class MainActivity extends Activity {
     public void rebuild() {
         final int y = scroll.getScrollY();
         buildHeader();
+        motion.clear();
         content.removeAllViews();
         cur.build(content);
-        scroll.post(() -> scroll.scrollTo(0, y));
+        scroll.post(() -> {
+            scroll.scrollTo(0, y);
+            motion.tilt(motionOn);
+        });
     }
 
     /** Ganti tema/warna: bangun ulang semuanya. */
@@ -370,8 +426,125 @@ public class MainActivity extends Activity {
         final int y = scroll == null ? 0 : scroll.getScrollY();
         String k = curKey;
         buildAll();
-        show(k);
+        show(k, false);
         scroll.post(() -> scroll.scrollTo(0, y));
+    }
+
+    // ------------------------------------------------------------------ efek dan gerak
+    public JSONObject fxCfg() {
+        JSONObject set = st.set();
+        JSONObject f = set.optJSONObject("fx");
+        if (f == null) {
+            f = new JSONObject();
+            Store.put(set, "fx", f);
+        }
+        return f;
+    }
+
+    /** Efek yang menyala dari awal: gerak kartu, muncul satu per satu, navbar kaca. */
+    public boolean fxOn(String key) {
+        JSONObject f = fxCfg();
+        if (f.has(key)) return f.optBoolean(key);
+        return key.equals("motion") || key.equals("reveal") || key.equals("liquid");
+    }
+
+    private void loadFlags() {
+        liquidOn = fxOn("liquid");
+        motionOn = fxOn("motion");
+        revealOn = fxOn("reveal");
+        gustOn = fxOn("gust");
+    }
+
+    /** Terapkan pengaturan efek tanpa membangun ulang kerangka. */
+    public void applyFx() {
+        if (fx == null || motion == null) return;
+        motionOn = fxOn("motion");
+        revealOn = fxOn("reveal");
+        gustOn = fxOn("gust");
+        int lv = 2;
+        try {
+            lv = Integer.parseInt(fxCfg().optString("level", "2"));
+        } catch (Exception ignored) {
+        }
+        boolean lightBg = !th.dark && Color.luminance(th.bg) > 0.5f;
+        fx.configure(fxOn("snow"), fxOn("rain"), fxOn("wind"), fxOn("leaf"), gustOn, fxOn("glass"), lv, lightBg);
+        if (!gustOn) motion.sway(0f, false);
+        if (!revealOn) motion.showAll();
+        motion.tilt(motionOn);
+    }
+
+    // ------------------------------------------------------------------ splash
+    private void showSplash(final boolean firstRun) {
+        final FrameLayout sp = new FrameLayout(this);
+        sp.setBackground(new Ui.PageBg(th, ui.dn));
+        sp.setClickable(true);
+
+        LinearLayout col = new LinearLayout(this);
+        col.setOrientation(LinearLayout.VERTICAL);
+        col.setGravity(Gravity.CENTER_HORIZONTAL);
+        sp.addView(col, new FrameLayout.LayoutParams(Ui.WRAP, Ui.WRAP, Gravity.CENTER));
+
+        Ui.Box lb = ui.boxFor(Ui.C1);
+        lb.setShape("");
+        lb.cr = null;
+        lb.r = th.id.equals("imut") ? 99 : Math.min(th.cardR, 26);
+        if (th.cardBw > 0 && th.cardBorder == 0) lb.bw = 0;
+        final LinearLayout lg = new LinearLayout(this);
+        lg.setGravity(Gravity.CENTER);
+        lg.setBackground(lb);
+        lg.setPadding(0, 0, Math.round(lb.ex()), Math.round(lb.ey()));
+        ImageView iv = new ImageView(this);
+        Bitmap bm = Ui.decode(Store.str(st.set(), "logo"));
+        if (bm != null) {
+            iv.setImageBitmap(bm);
+            iv.setScaleType(ImageView.ScaleType.CENTER_CROP);
+            lg.setPadding(ui.dp(4), ui.dp(4), ui.dp(4) + Math.round(lb.ex()), ui.dp(4) + Math.round(lb.ey()));
+            lg.addView(iv, new LinearLayout.LayoutParams(Ui.MATCH, Ui.MATCH));
+        } else {
+            iv.setImageResource(R.drawable.ic_warung);
+            iv.setScaleType(ImageView.ScaleType.FIT_CENTER);
+            lg.addView(iv, new LinearLayout.LayoutParams(ui.dp(60), ui.dp(60)));
+        }
+        col.addView(lg, new LinearLayout.LayoutParams(ui.dp(96) + Math.round(lb.ex()), ui.dp(96) + Math.round(lb.ey())));
+
+        String nm = Store.str(st.set(), "name");
+        final TextView n = ui.tv(col, nm.isEmpty() ? "Toko Saya" : nm, 26);
+        n.setAllCaps(th.caps);
+        n.setTextColor(th.ink);
+        n.setGravity(Gravity.CENTER);
+        n.setSingleLine(true);
+        ui.mt(n, 22);
+        final TextView sub = ui.tv(col, "Buku Toko · stok, kas, dan bon", 14);
+        sub.setTextColor(th.mu);
+        sub.setGravity(Gravity.CENTER);
+        ui.mt(sub, 4);
+
+        lg.setAlpha(0f);
+        lg.setScaleX(0.55f);
+        lg.setScaleY(0.55f);
+        lg.setRotation(-10f);
+        n.setAlpha(0f);
+        n.setTranslationY(ui.dp(18));
+        sub.setAlpha(0f);
+        sub.setTranslationY(ui.dp(14));
+        frameRoot.addView(sp, new FrameLayout.LayoutParams(Ui.MATCH, Ui.MATCH));
+
+        lg.animate().alpha(1f).scaleX(1f).scaleY(1f).rotation(0f).setDuration(620)
+                .setInterpolator(new OvershootInterpolator(1.6f)).start();
+        n.animate().alpha(1f).translationY(0f).setStartDelay(260).setDuration(460)
+                .setInterpolator(new DecelerateInterpolator(1.8f)).start();
+        sub.animate().alpha(0.9f).translationY(0f).setStartDelay(420).setDuration(460)
+                .setInterpolator(new DecelerateInterpolator(1.8f)).start();
+
+        sp.postDelayed(() -> {
+            if (!homeShown) show("home", true);
+            sp.animate().alpha(0f).scaleX(1.05f).scaleY(1.05f).setDuration(420)
+                    .setInterpolator(new DecelerateInterpolator()).withEndAction(() -> {
+                        ViewGroup g = (ViewGroup) sp.getParent();
+                        if (g != null) g.removeView(sp);
+                        if (firstRun && !isFinishing() && !st.S.optBoolean("seen", false)) Tutorial.show(this);
+                    }).start();
+        }, 1350);
     }
 
     /** Perbarui judul/logo di header tanpa membangun ulang layar. */

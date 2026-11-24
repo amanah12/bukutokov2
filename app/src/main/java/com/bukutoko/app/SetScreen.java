@@ -116,6 +116,44 @@ public class SetScreen extends Screen {
         colorField(cr, "Warna utama", set, "c1");
         colorField(cr, "Warna aksen", set, "c2");
 
+        // ---- efek dan gerak
+        Ui.Card fc = ui.card(into, Ui.NORMAL);
+        ui.mt(fc, 14);
+        ui.h2(fc, "Efek dan gerak");
+        TextView fh = ui.tv(fc, "Efek memakai baterai. Kalau HP terasa berat, turunkan kepadatan atau matikan efeknya. Efek tidak tampil di atas jendela dialog.", 14);
+        ui.mar(fh, 0, 6, 0, 6);
+        final String[][] FXL = {
+                {"motion", "Gerak kartu saat menggulir"}, {"reveal", "Elemen muncul satu per satu"},
+                {"liquid", "Navbar kaca cair"}, {"snow", "Turun salju"}, {"rain", "Turun hujan"},
+                {"wind", "Hembusan angin"}, {"leaf", "Hembusan daun"}, {"gust", "Hembusan card"},
+                {"glass", "Air mengalir di kaca"}};
+        final JSONObject fxc = a.fxCfg();
+        for (String[] fe : FXL) {
+            final String key = fe[0];
+            CheckBox fcb = new CheckBox(a);
+            fcb.setText(fe[1]);
+            fcb.setTextColor(ui.th.cardInk);
+            fcb.setTypeface(ui.th.font);
+            fcb.setTextSize(14);
+            fcb.setChecked(a.fxOn(key));
+            fcb.setOnCheckedChangeListener((v, on) -> {
+                Store.put(fxc, key, on);
+                st.save();
+                if (key.equals("liquid")) a.restyle();
+                else a.applyFx();
+            });
+            fc.addView(fcb, new LinearLayout.LayoutParams(Ui.MATCH, Ui.WRAP));
+        }
+        ui.label(fc, "Kepadatan efek cuaca");
+        final Ui.Select flv = ui.select(fc);
+        flv.options(new String[]{"Ringan", "Sedang", "Lebat"}, new String[]{"1", "2", "3"})
+                .set(fxc.optString("level", "2"));
+        flv.onChange = () -> {
+            Store.put(fxc, "level", flv.value());
+            st.save();
+            a.applyFx();
+        };
+
         // ---- grafik dan hitungan
         Ui.Card g = ui.card(into, Ui.NORMAL);
         ui.mt(g, 14);

@@ -555,4 +555,11 @@ public class MainActivity extends Activity {
     public ScrollView scroller() {
         return scroll;
     }
+
+    @Override
+    protected void onResume() {
+        super.onResume();
+        NoteFab.attach(this);
+        NoteFab.attach(this);
+    }
 }

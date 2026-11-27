@@ -1025,8 +1025,21 @@ public class Ui {
                 setTranslationY(pr ? box.ey() : 0);
                 box.invalidateSelf();
             } else {
-                setAlpha(pr ? 0.7f : 1f);
+                animate().cancel();
+                if (pr) {
+                    performHapticFeedback(android.view.HapticFeedbackConstants.KEYBOARD_TAP);
+                    animate().scaleX(0.95f).scaleY(0.95f).alpha(0.88f).setDuration(90).start();
+                } else {
+                    animate().scaleX(1f).scaleY(1f).alpha(isEnabled() ? 1f : 0.4f).setDuration(280)
+                            .setInterpolator(new android.view.animation.OvershootInterpolator(2.4f)).start();
+                }
             }
+        }
+
+        @Override
+        public void setEnabled(boolean e) {
+            super.setEnabled(e);
+            setAlpha(e ? 1f : 0.4f);
         }
     }
 
@@ -1296,7 +1309,14 @@ public class Ui {
         public Runnable onClose;
 
         public void show() {
+            card.setAlpha(0f);
+            card.setScaleX(0.92f);
+            card.setScaleY(0.92f);
+            card.setTranslationY(card.getResources().getDisplayMetrics().density * 24f);
             d.show();
+            Roll.play(card);
+            card.animate().alpha(1f).scaleX(1f).scaleY(1f).translationY(0f).setDuration(300)
+                    .setInterpolator(new android.view.animation.OvershootInterpolator(1.15f)).start();
         }
 
         public void close() {

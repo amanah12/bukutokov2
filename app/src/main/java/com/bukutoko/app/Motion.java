@@ -4,7 +4,7 @@ import android.view.View;
 import android.view.ViewGroup;
 import android.view.ViewParent;
 import android.view.ViewTreeObserver;
-import android.view.animation.DecelerateInterpolator;
+import android.view.animation.PathInterpolator;
 
 import java.util.ArrayList;
 import java.util.Iterator;
@@ -52,16 +52,16 @@ public class Motion {
     private void hide(View v) {
         v.animate().cancel();
         v.setAlpha(0f);
-        v.setTranslationY(34f * dn);
-        v.setScaleX(0.94f);
-        v.setScaleY(0.94f);
+        v.setTranslationY(30f * dn);
+        v.setScaleX(0.95f);
+        v.setScaleY(0.95f);
     }
 
     private void play(View v, long delay) {
         v.animate().cancel();
         v.animate().alpha(1f).translationY(0f).scaleX(1f).scaleY(1f)
-                .setStartDelay(delay).setDuration(440)
-                .setInterpolator(new DecelerateInterpolator(1.8f)).start();
+                .setStartDelay(delay).setDuration(560)
+                .setInterpolator(new PathInterpolator(0.16f, 1f, 0.3f, 1f)).start();
     }
 
     // ------------------------------------------------------------------ muncul satu per satu

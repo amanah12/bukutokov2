@@ -124,6 +124,7 @@ public class SetScreen extends Screen {
         ui.mar(fh, 0, 6, 0, 6);
         final String[][] FXL = {
                 {"motion", "Gerak kartu saat menggulir"}, {"reveal", "Elemen muncul satu per satu"},
+                {"roll", "Nominal berputar seperti teller"},
                 {"liquid", "Navbar kaca cair"}, {"snow", "Turun salju"}, {"rain", "Turun hujan"},
                 {"wind", "Hembusan angin"}, {"leaf", "Hembusan daun"}, {"gust", "Hembusan card"},
                 {"glass", "Air mengalir di kaca"}};
@@ -233,6 +234,9 @@ public class SetScreen extends Screen {
         });
         q.addView(qc, new LinearLayout.LayoutParams(Ui.MATCH, Ui.WRAP));
         ui.mt(qc, 12);
+
+        // ---- kunci aplikasi
+        AppLock.buildSettings(a, into);
 
         // ---- bantuan
         Ui.Card h = ui.card(into, Ui.NORMAL);

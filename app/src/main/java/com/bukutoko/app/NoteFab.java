@@ -38,6 +38,10 @@ public class NoteFab {
         FrameLayout.LayoutParams lp = new FrameLayout.LayoutParams(s, s, Gravity.BOTTOM | Gravity.END);
         lp.setMargins(0, 0, dp(a, 16), dp(a, 96));
         root.addView(fab, lp);
+        fab.setScaleX(0f);
+        fab.setScaleY(0f);
+        fab.animate().scaleX(1f).scaleY(1f).setStartDelay(500).setDuration(420)
+                .setInterpolator(new android.view.animation.OvershootInterpolator(2.4f)).start();
 
         final float[] st = new float[4];
         final int slop = ViewConfiguration.get(a).getScaledTouchSlop();
@@ -46,12 +50,16 @@ public class NoteFab {
                 case MotionEvent.ACTION_DOWN:
                     st[0] = e.getRawX(); st[1] = e.getRawY();
                     st[2] = v.getTranslationX(); st[3] = v.getTranslationY();
+                    v.animate().cancel();
+                    v.animate().scaleX(0.9f).scaleY(0.9f).setDuration(90).start();
                     return true;
                 case MotionEvent.ACTION_MOVE:
                     v.setTranslationX(st[2] + e.getRawX() - st[0]);
                     v.setTranslationY(st[3] + e.getRawY() - st[1]);
                     return true;
                 case MotionEvent.ACTION_UP:
+                    v.animate().scaleX(1f).scaleY(1f).setDuration(300)
+                            .setInterpolator(new android.view.animation.OvershootInterpolator(2.6f)).start();
                     if (Math.abs(e.getRawX() - st[0]) < slop && Math.abs(e.getRawY() - st[1]) < slop) NoteDialog.show(a);
                     return true;
             }

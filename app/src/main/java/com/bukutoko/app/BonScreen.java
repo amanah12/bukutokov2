@@ -86,6 +86,8 @@ public class BonScreen extends Screen {
         ui.h2(b, "Pelanggan baru");
         ui.label(b, "Nama");
         EditText n = ui.input(b, "mis. Bu Siti", Ui.INK_NAME);
+        ui.label(b, "No. WhatsApp (opsional)");
+        EditText wa = ui.input(b, "mis. 08123456789", android.text.InputType.TYPE_CLASS_PHONE);
         LinearLayout r = ui.row(b);
         r.setGravity(Gravity.END | Gravity.CENTER_VERTICAL);
         ui.mt(r, 16);
@@ -99,6 +101,7 @@ public class BonScreen extends Screen {
             JSONObject c = new JSONObject();
             Store.put(c, "id", Store.uid());
             Store.put(c, "nama", nm);
+            Store.put(c, "wa", wa.getText().toString().trim());
             Store.put(c, "log", new org.json.JSONArray());
             st.bon().put(c);
             st.save();
@@ -170,7 +173,32 @@ public class BonScreen extends Screen {
             }
         };
         fillBon.run();
-        d.onClose = () -> fillBon = null;
+        d.onClose = () -> {
+            fillBon = null;
+            st.save();
+        };
+
+        ui.label(b, "No. WhatsApp pelanggan");
+        final EditText wa = ui.input(b, "mis. 08123456789", android.text.InputType.TYPE_CLASS_PHONE);
+        wa.setText(Store.str(st.bonOf(id), "wa"));
+        final Ui.Btn tg = ui.btn(b, "Tagih via WhatsApp", Ui.P, v -> {
+            JSONObject cc = st.bonOf(bonId);
+            if (cc == null) return;
+            Store.put(cc, "wa", wa.getText().toString().trim());
+            st.save();
+            Tagih.show(a, cc);
+        });
+        ui.mt(tg, 8);
+        final Runnable waState = () -> {
+            boolean okWa = !Tagih.norm(wa.getText().toString()).isEmpty();
+            tg.setEnabled(okWa);
+        };
+        waState.run();
+        Ui.watch(wa, () -> {
+            waState.run();
+            JSONObject cc = st.bonOf(bonId);
+            if (cc != null) Store.put(cc, "wa", wa.getText().toString().trim());
+        });
 
         Ui.Btn bg = ui.btn(b, "+ Bon barang (stok berkurang)", Ui.P, v -> openBonBarang());
         ui.mt(bg, 14);

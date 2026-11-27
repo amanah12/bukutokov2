@@ -6,7 +6,7 @@ import android.graphics.Typeface;
 
 import org.json.JSONObject;
 
-/** Definisi tema (11 tema, setara versi web terbaru). Satuan ukuran: dp. */
+/** Definisi tema (20 tema). Satuan ukuran: dp. */
 public class Th {
     public static final String[][] LIST = {
             {"classic", "Classic", "#ffd966", "#a8d5ba"},
@@ -19,6 +19,15 @@ public class Th {
             {"pixel", "Pixel", "#8be28b", "#f3b6ee"},
             {"komik", "Komik", "#c8f31d", "#b79cff"},
             {"tinta", "Tinta", "#ffb98a", "#ffffff"},
+            {"glass", "Liquid Glass", "#7cc4ff", "#c8a6ff"},
+            {"material", "Material You", "#d0bcff", "#e8def8"},
+            {"terminal", "Terminal", "#39ff14", "#7dffb0"},
+            {"sketsa", "Hand-drawn", "#ffd966", "#ffb3c6"},
+            {"y2k", "Y2K Chrome", "#6fd3ff", "#ff8fe0"},
+            {"bauhaus", "Bauhaus", "#f5c518", "#e63b2e"},
+            {"aurora", "Aurora", "#5cffc8", "#a98bff"},
+            {"vapor", "Vaporwave", "#ff71ce", "#01cdfe"},
+            {"manga", "Manga", "#ff3b3b", "#ffe14d"},
             {"diy", "DIY", "#c8f31d", "#ff9fbb"}};
 
     /** Bentuk kartu tema DIY: {kode, nama}. */
@@ -253,6 +262,121 @@ public class Th {
                 roundTabs(t, true);
                 t.tabBg = css("ffffff"); t.tabInk = css("1b1735"); t.tabOnBg = css("111111"); t.tabOnInk = css("ffffff");
                 t.tabBw = 3; t.tabBorder = css("111111");
+                break;
+            case "glass":
+                t.dark = true;
+                t.bg = css("0c1230"); t.card = css("ffffff2a"); t.ink = css("f4f7ff"); t.mu = css("b7c0e0"); t.bad = css("ff8aa0");
+                t.inClr = css("7dffb0"); t.inputBg = css("ffffff22"); t.wBg = css("ffffff26"); t.wBw = 1; t.wBorder = css("ffffff66");
+                t.sep = css("ffffff22"); t.accent = t.c1;
+                t.shape = "kaca"; t.cardR = 28; t.cardBw = 1; t.cardBorder = css("ffffff88"); t.cardSx = 0; t.cardSy = 0;
+                t.btnR = 999; t.btnBw = 0; t.btnSx = 0; t.btnSy = 0; t.btnGloss = true;
+                t.inR = 16; t.inBw = 1; t.inBorder = css("ffffff44");
+                t.font = Typeface.create("sans-serif-medium", Typeface.BOLD);
+                t.glowClr = new int[]{css("5b7cff88"), css("c86bff77"), css("20d0c066")};
+                t.glowX = new float[]{0, 1, 0.5f}; t.glowY = new float[]{0, 0.35f, 1}; t.glowR = new float[]{0.7f, 0.6f, 0.65f};
+                roundTabs(t, true);
+                t.tabBg = css("ffffff30"); t.tabBw = 1; t.tabBorder = css("ffffff66");
+                break;
+            case "material":
+                t.bg = css("fef7ff"); t.card = css("f3edf7"); t.ink = css("1d1b20"); t.mu = css("49454f"); t.bad = css("b3261e");
+                t.inClr = css("146c2e"); t.inputBg = css("e7e0ec"); t.wBg = css("e8def8"); t.wBw = 0; t.wBorder = 0;
+                t.sep = css("1d1b2014"); t.accent = css("6750a4");
+                soft(t, 28, 0, 0, 0, 0);
+                t.cardBw = 0; t.inR = 16; t.inBw = 0;
+                t.primBg = css("6750a4"); t.primInk = css("ffffff");
+                t.font = Typeface.create("sans-serif-medium", Typeface.BOLD);
+                roundTabs(t, false);
+                t.tabBg = css("f3edf7"); t.tabOnBg = css("e8def8"); t.tabOnInk = css("1d192b"); t.tabR = 28; t.tabBtnR = 20;
+                break;
+            case "terminal":
+                t.dark = true;
+                t.bg = css("070b07"); t.card = css("0d150d"); t.ink = css("8dff8d"); t.mu = css("49b349"); t.bad = css("ff6b5f");
+                t.inClr = css("39ff14"); t.inputBg = css("050805"); t.wBg = 0; t.wBw = 1; t.wBorder = css("39ff1488");
+                t.sep = css("39ff1433"); t.accent = css("39ff14");
+                t.cardR = 0; t.cardBw = 1; t.cardBorder = css("39ff1499"); t.cardSx = 0; t.cardSy = 0;
+                t.btnR = 0; t.btnBw = 1; t.btnBorder = css("39ff14"); t.btnSx = 0; t.btnSy = 0;
+                t.inR = 0; t.inBw = 1; t.inBorder = css("39ff1488");
+                t.grid = css("39ff1410"); t.caps = true;
+                t.font = Typeface.create(Typeface.MONOSPACE, Typeface.BOLD);
+                t.glowClr = new int[]{css("39ff1418")}; t.glowX = new float[]{0.5f}; t.glowY = new float[]{0}; t.glowR = new float[]{0.8f};
+                t.tabBg = css("0d150d"); t.tabInk = t.ink; t.tabOnBg = t.c1; t.tabOnInk = css("041004");
+                t.tabR = 0; t.tabBw = 1; t.tabBorder = css("39ff1499"); t.tabBtnR = 0;
+                break;
+            case "sketsa":
+                t.bg = css("f6f1e4"); t.card = css("fffdf5"); t.ink = css("2a2a2a"); t.mu = css("6a665c"); t.bad = css("c0392b");
+                t.inClr = css("1a8a4a"); t.inputBg = css("fffdf5"); t.wBg = css("fffdf5"); t.wBw = 2; t.wBorder = t.ink;
+                t.sep = css("2a2a2a33"); t.accent = css("e07b45");
+                t.cardR = 16; t.cardBw = 2; t.cardBorder = t.ink; t.cardDash = true; t.cardSx = 3; t.cardSy = 4; t.cardSdClr = css("2a2a2a2e");
+                t.btnR = 14; t.btnBw = 2; t.btnBorder = t.ink; t.btnSx = 2; t.btnSy = 3; t.btnSdClr = t.ink;
+                t.inR = 12; t.inBw = 2; t.inBorder = t.ink;
+                t.font = Typeface.create("casual", Typeface.BOLD);
+                t.grid = css("2a2a2a0d");
+                t.tabBg = t.card; t.tabInk = t.ink; t.tabOnBg = t.c1; t.tabOnInk = css("111111");
+                t.tabR = 0; t.tabBw = 2; t.tabBorder = t.ink; t.tabBtnR = 12;
+                break;
+            case "y2k":
+                t.bg = css("c7d3ea"); t.card = css("f2f6ff"); t.ink = css("0f1e3d"); t.mu = css("4a5d85"); t.bad = css("d6246e");
+                t.inClr = css("0d8a55"); t.inputBg = css("ffffff"); t.wBg = css("e6eeff"); t.wBw = 1.5f; t.wBorder = css("ffffffee");
+                t.sep = css("0f1e3d22"); t.accent = css("ff4fd8");
+                soft(t, 20, css("ffffffee"), 0, 3, css("0f1e3d33"));
+                t.cardBw = 2; t.cardGrad = true; t.cardG1 = css("ffffff"); t.cardG2 = css("b8c8e8");
+                t.btnGloss = true; t.btnBw = 1.5f; t.btnBorder = css("0f1e3d66"); t.primGrad = true;
+                t.font = Typeface.create("sans-serif-black", Typeface.NORMAL);
+                t.glowClr = new int[]{css("ffffffcc"), css("7fe3ff88"), css("ff9be866")};
+                t.glowX = new float[]{0.2f, 1, 0}; t.glowY = new float[]{0, 0.4f, 1}; t.glowR = new float[]{0.5f, 0.55f, 0.55f};
+                roundTabs(t, true);
+                t.tabBw = 1.5f; t.tabBorder = css("ffffffee");
+                break;
+            case "bauhaus":
+                t.bg = css("f1ece0"); t.card = css("ffffff"); t.ink = css("111111"); t.mu = css("55524a"); t.bad = css("d62718");
+                t.inClr = css("0b7a3b"); t.inputBg = css("ffffff"); t.wBg = css("ffffff"); t.wBw = 3; t.wBorder = t.ink;
+                t.sep = css("11111122"); t.accent = css("1d4ed8");
+                t.cardR = 0; t.cardBw = 3; t.cardBorder = t.ink; t.cardSx = 6; t.cardSy = 6; t.cardSdClr = css("1d4ed8");
+                t.btnR = 0; t.btnBw = 3; t.btnBorder = t.ink; t.btnSx = 3; t.btnSy = 3; t.btnSdClr = t.ink;
+                t.inR = 0; t.inBw = 3; t.inBorder = t.ink; t.caps = true;
+                t.font = Typeface.create("sans-serif-black", Typeface.NORMAL);
+                t.tabBg = t.card; t.tabInk = t.ink; t.tabOnBg = t.c1; t.tabOnInk = css("111111");
+                t.tabR = 0; t.tabBw = 3; t.tabBorder = t.ink; t.tabBtnR = 0;
+                break;
+            case "aurora":
+                t.dark = true;
+                t.bg = css("080d24"); t.card = css("ffffff1c"); t.ink = css("f2f5ff"); t.mu = css("aeb7dc"); t.bad = css("ff8fa8");
+                t.inClr = css("5cffc8"); t.inputBg = css("ffffff18"); t.wBg = css("ffffff1f"); t.wBw = 1; t.wBorder = css("ffffff44");
+                t.sep = css("ffffff1f"); t.accent = css("5cffc8");
+                soft(t, 26, css("ffffff3a"), 0, 0, 0);
+                t.inBorder = css("ffffff33"); t.primGrad = true;
+                t.font = Typeface.create("sans-serif-medium", Typeface.BOLD);
+                t.glowClr = new int[]{css("21f5a866"), css("7a4dff77"), css("ff4fa855"), css("27a8ff44")};
+                t.glowX = new float[]{0.1f, 0.9f, 0.5f, 1}; t.glowY = new float[]{0.05f, 0.2f, 0.75f, 1}; t.glowR = new float[]{0.7f, 0.7f, 0.65f, 0.6f};
+                roundTabs(t, true);
+                t.tabBg = css("101842e6"); t.tabBw = 1; t.tabBorder = css("ffffff33");
+                break;
+            case "vapor":
+                t.dark = true;
+                t.bg = css("24104a"); t.card = css("33176a"); t.ink = css("ffeefe"); t.mu = css("d3b3ff"); t.bad = css("ff6b9a");
+                t.inClr = css("01cdfe"); t.inputBg = css("1a0b3a"); t.wBg = css("1a0b3a"); t.wBw = 2; t.wBorder = css("01cdfe");
+                t.sep = css("ff71ce44"); t.accent = css("ff71ce");
+                t.cardR = 8; t.cardBw = 2; t.cardBorder = css("ff71ce"); t.cardSx = 5; t.cardSy = 5; t.cardSdClr = css("01cdfe99");
+                t.btnR = 6; t.btnBw = 2; t.btnBorder = css("01cdfe"); t.btnSx = 3; t.btnSy = 3; t.btnSdClr = css("01cdfe88");
+                t.inR = 6; t.inBw = 2; t.inBorder = css("ff71ce99");
+                t.grid = css("ff71ce22"); t.caps = true;
+                t.font = Typeface.create("sans-serif-black", Typeface.NORMAL);
+                t.glowClr = new int[]{css("ff71ce77"), css("01cdfe55"), css("b967ff66")};
+                t.glowX = new float[]{0.5f, 0.5f, 0}; t.glowY = new float[]{0, 1, 0.5f}; t.glowR = new float[]{0.8f, 0.75f, 0.5f};
+                t.tabBg = css("2a0e55"); t.tabInk = t.ink; t.tabOnBg = t.c1; t.tabOnInk = css("1a0b3a");
+                t.tabR = 8; t.tabBw = 2; t.tabBorder = css("ff71ce"); t.tabBtnR = 6;
+                break;
+            case "manga":
+                t.bg = css("fbfbfa"); t.card = css("ffffff"); t.ink = css("0a0a0a"); t.mu = css("55555a"); t.bad = css("e11d2e");
+                t.inClr = css("0b7a3b"); t.inputBg = css("ffffff"); t.wBg = css("ffffff"); t.wBw = 3; t.wBorder = t.ink;
+                t.sep = css("0a0a0a22"); t.accent = css("ff3b3b");
+                t.cardR = 4; t.cardBw = 3.5f; t.cardBorder = t.ink; t.cardSx = 5; t.cardSy = 5; t.cardSdClr = t.ink;
+                t.btnR = 3; t.btnBw = 3; t.btnBorder = t.ink; t.btnSx = 3; t.btnSy = 3; t.btnSdClr = t.ink;
+                t.inR = 3; t.inBw = 3; t.inBorder = t.ink; t.caps = true;
+                t.font = Typeface.create("sans-serif-condensed", Typeface.BOLD);
+                t.grid = css("0a0a0a0e");
+                t.tabBg = t.card; t.tabInk = t.ink; t.tabOnBg = t.c1; t.tabOnInk = css("111111");
+                t.tabR = 0; t.tabBw = 3.5f; t.tabBorder = t.ink; t.tabBtnR = 0;
                 break;
             case "diy":
                 diy(t, diy);

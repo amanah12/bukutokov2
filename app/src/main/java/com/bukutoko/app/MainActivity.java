@@ -59,6 +59,7 @@ public class MainActivity extends Activity {
     protected void onCreate(Bundle b) {
         super.onCreate(b);
         st = new Store(this);
+        AppLock.reset();
         buildAll();
         showSplash(!st.S.optBoolean("seen", false));
     }
@@ -177,6 +178,7 @@ public class MainActivity extends Activity {
             if (motion != null) motion.sway(fx == null ? 0f : fx.windX, gustOn);
         });
         setContentView(frameRoot);
+        NoteFab.attach(this);
         applyFx();
 
         Window win = getWindow();
@@ -399,6 +401,7 @@ public class MainActivity extends Activity {
         cur.build(content);
         scroll.scrollTo(0, 0);
         tabHighlight();
+        if (anim) Roll.play(content);
         motion.reveal(anim && revealOn);
         motion.tilt(motionOn);
     }
@@ -445,10 +448,11 @@ public class MainActivity extends Activity {
     public boolean fxOn(String key) {
         JSONObject f = fxCfg();
         if (f.has(key)) return f.optBoolean(key);
-        return key.equals("motion") || key.equals("reveal") || key.equals("liquid");
+        return key.equals("motion") || key.equals("reveal") || key.equals("liquid") || key.equals("roll");
     }
 
     private void loadFlags() {
+        Roll.enabled = fxOn("roll");
         liquidOn = fxOn("liquid");
         motionOn = fxOn("motion");
         revealOn = fxOn("reveal");
@@ -458,6 +462,7 @@ public class MainActivity extends Activity {
     /** Terapkan pengaturan efek tanpa membangun ulang kerangka. */
     public void applyFx() {
         if (fx == null || motion == null) return;
+        Roll.enabled = fxOn("roll");
         motionOn = fxOn("motion");
         revealOn = fxOn("reveal");
         gustOn = fxOn("gust");
@@ -560,6 +565,18 @@ public class MainActivity extends Activity {
     protected void onResume() {
         super.onResume();
         NoteFab.attach(this);
-        NoteFab.attach(this);
+        AppLock.onResume(this);
+    }
+
+    @Override
+    protected void onStop() {
+        super.onStop();
+        AppLock.onStop();
+    }
+
+    @Override
+    protected void onDestroy() {
+        AppLock.dismiss();
+        super.onDestroy();
     }
 }

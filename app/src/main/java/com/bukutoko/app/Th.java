@@ -69,6 +69,7 @@ public class Th {
     public float[] btnCr;
     public boolean caps = false;
     public boolean btnGloss;
+    public boolean sketch; // garis bergoyang seperti digambar tangan
 
     public float inR = 0, inBw = 3;
     public int inBorder;
@@ -306,7 +307,8 @@ public class Th {
                 t.bg = css("f6f1e4"); t.card = css("fffdf5"); t.ink = css("2a2a2a"); t.mu = css("6a665c"); t.bad = css("c0392b");
                 t.inClr = css("1a8a4a"); t.inputBg = css("fffdf5"); t.wBg = css("fffdf5"); t.wBw = 2; t.wBorder = t.ink;
                 t.sep = css("2a2a2a33"); t.accent = css("e07b45");
-                t.cardR = 16; t.cardBw = 2; t.cardBorder = t.ink; t.cardDash = true; t.cardSx = 3; t.cardSy = 4; t.cardSdClr = css("2a2a2a2e");
+                t.sketch = true;
+                t.cardR = 16; t.cardBw = 2.2f; t.cardBorder = t.ink; t.cardSx = 4; t.cardSy = 5; t.cardSdClr = css("2a2a2a");
                 t.btnR = 14; t.btnBw = 2; t.btnBorder = t.ink; t.btnSx = 2; t.btnSy = 3; t.btnSdClr = t.ink;
                 t.inR = 12; t.inBw = 2; t.inBorder = t.ink;
                 t.font = Typeface.create("casual", Typeface.BOLD);

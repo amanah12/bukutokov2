@@ -76,7 +76,7 @@ public class Ui {
     // ------------------------------------------------------------------ drawable
     public static class Box extends Drawable {
         public int fill, g1, g2, border, sdClr;
-        public boolean grad, dash, topOnly, shadowOn = true, gloss;
+        public boolean grad, dash, topOnly, shadowOn = true, gloss, sketch;
         public float r, bw, sx, sy, dn = 1;
         public float[] cr;
         public String shape = "";
@@ -178,6 +178,10 @@ public class Ui {
                 drawShape(cv, b);
                 return;
             }
+            if (sketch) {
+                drawSketch(cv, b);
+                return;
+            }
             float ex = ex(), ey = ey();
             RectF body = new RectF(b.left, b.top, b.right - ex, b.bottom - ey);
             if (body.width() <= 0 || body.height() <= 0) return;
@@ -222,6 +226,100 @@ public class Ui {
                 cv.drawPath(path, p);
                 p.setPathEffect(null);
             }
+        }
+
+
+        // ---------------------------------------------------------- gaya coretan tangan
+        /** Garis tangan: titik di sepanjang [src] digeser acak halus ke samping, lalu dihaluskan. */
+        private Path wobble(Path src, java.util.Random rnd, float amp, float step, float startFrac, float span) {
+            android.graphics.PathMeasure pm = new android.graphics.PathMeasure(src, true);
+            float len = pm.getLength();
+            Path out = new Path();
+            if (len <= 0) return out;
+            int cnt = Math.max(4, Math.round(len * span / step));
+            float[] px = new float[cnt + 1], py = new float[cnt + 1];
+            float[] pos = new float[2], tan = new float[2];
+            float noise = 0;
+            for (int i = 0; i <= cnt; i++) {
+                float dist = (startFrac * len + len * span * i / cnt) % len;
+                pm.getPosTan(dist, pos, tan);
+                noise = noise * 0.55f + (rnd.nextFloat() - 0.5f) * 2f * amp;
+                px[i] = pos[0] - tan[1] * noise;
+                py[i] = pos[1] + tan[0] * noise;
+            }
+            out.moveTo(px[0], py[0]);
+            for (int i = 1; i <= cnt; i++) out.quadTo(px[i - 1], py[i - 1], (px[i - 1] + px[i]) / 2f, (py[i - 1] + py[i]) / 2f);
+            out.lineTo(px[cnt], py[cnt]);
+            return out;
+        }
+
+        private Path skOut, skOut2, skFill;
+        private float skW = -1, skH = -1, skL = -1, skT = -1, skAngle;
+        private final long skSeed = (long) (Math.random() * 1e9);
+
+        private void drawSketch(Canvas cv, Rect b) {
+            float ex = ex(), ey = ey(), pad = 2.5f * dn;
+            RectF body = new RectF(b.left + pad, b.top + pad, b.right - ex - pad, b.bottom - ey - pad);
+            if (body.width() <= 4 * dn || body.height() <= 4 * dn) return;
+            if (skOut == null || skW != body.width() || skH != body.height() || skL != b.left || skT != b.top) {
+                java.util.Random rnd = new java.util.Random(skSeed);
+                shape(body);
+                Path base = new Path(path);
+                float amp = 1.25f * dn;
+                skOut = wobble(base, rnd, amp, 13 * dn, rnd.nextFloat(), 1.04f);
+                skOut2 = wobble(base, rnd, amp * 1.15f, 17 * dn, rnd.nextFloat(), 0.93f);
+                skFill = wobble(base, rnd, amp * 1.3f, 15 * dn, rnd.nextFloat(), 1f);
+                skFill.close();
+                skAngle = (rnd.nextFloat() - 0.5f) * 0.7f;
+                skW = body.width();
+                skH = body.height();
+                skL = b.left;
+                skT = b.top;
+            }
+            cv.save();
+            cv.rotate(skAngle, body.centerX(), body.centerY());
+            p.setShader(null);
+            p.setPathEffect(null);
+            p.setStrokeCap(Paint.Cap.ROUND);
+            p.setStrokeJoin(Paint.Join.ROUND);
+            if (sdClr != 0 && shadowOn && (ex > 0 || ey > 0)) {
+                p.setStyle(Paint.Style.STROKE);
+                p.setStrokeWidth(Math.max(1f, bw * dn * 0.8f));
+                p.setColor(Th.alpha(sdClr, 0x70));
+                cv.save();
+                cv.translate(ex, ey);
+                cv.drawPath(skOut2, p);
+                cv.restore();
+                p.setStrokeWidth(1.1f * dn);
+                p.setColor(Th.alpha(sdClr, 0x60));
+                float rr = Math.min(r * dn, Math.min(body.width(), body.height()) / 2f);
+                for (float x = body.left + rr + 4 * dn; x < body.right - rr; x += 9 * dn) cv.drawLine(x, body.bottom, x + ex, body.bottom + ey, p);
+                for (float y = body.top + rr + 4 * dn; y < body.bottom - rr; y += 9 * dn) cv.drawLine(body.right, y, body.right + ex, y + ey, p);
+            }
+            p.setStyle(Paint.Style.FILL);
+            cv.save();
+            cv.translate(0.9f * dn, 0.9f * dn);
+            if (grad) {
+                p.setShader(new LinearGradient(body.left, body.top, body.right, body.bottom, g1, g2, Shader.TileMode.CLAMP));
+                p.setColor(0xFF000000);
+                cv.drawPath(skFill, p);
+                p.setShader(null);
+            } else if (fill != 0) {
+                p.setColor(fill);
+                cv.drawPath(skFill, p);
+            }
+            cv.restore();
+            if (bw > 0 && border != 0) {
+                p.setStyle(Paint.Style.STROKE);
+                p.setStrokeWidth(bw * dn);
+                p.setColor(border);
+                cv.drawPath(skOut, p);
+                p.setStrokeWidth(Math.max(1f, bw * dn * 0.65f));
+                p.setColor(Th.alpha(border, 0xB4));
+                cv.drawPath(skOut2, p);
+            }
+            p.setStyle(Paint.Style.FILL);
+            cv.restore();
         }
 
         // ---------------------------------------------------------- bentuk dekoratif
@@ -804,6 +902,7 @@ public class Ui {
             b.g1 = th.cardG1;
             b.g2 = th.cardG2;
         } else b.fill = th.card;
+        b.sketch = th.sketch;
         if (!th.shape.isEmpty()) {
             b.setShape(th.shape);
             b.tint = th.shape.equals("jahit") ? Th.alpha(th.ink, 0x99) : th.tint;
@@ -1004,6 +1103,7 @@ public class Ui {
             b.sdClr = th.btnSdClr;
             b.cr = th.btnCr;
             b.gloss = th.btnGloss;
+            b.sketch = th.sketch;
             if (!th.btnShape.isEmpty()) {
                 b.setShape(th.btnShape);
                 b.tint = Th.alpha(ink, 0xAA);
@@ -1060,6 +1160,7 @@ public class Ui {
         b.r = th.inR;
         b.bw = th.inBw;
         b.border = th.inBorder;
+        b.sketch = th.sketch;
         return b;
     }
 
@@ -1234,7 +1335,7 @@ public class Ui {
     public LinearLayout hscroll(ViewGroup p) {
         HorizontalScrollView h = new HorizontalScrollView(c);
         h.setHorizontalScrollBarEnabled(false);
-        h.setClipChildren(false);
+        h.setClipChildren(true);
         h.setClipToPadding(false);
         p.addView(h, new LinearLayout.LayoutParams(MATCH, WRAP));
         LinearLayout r = new LinearLayout(c);

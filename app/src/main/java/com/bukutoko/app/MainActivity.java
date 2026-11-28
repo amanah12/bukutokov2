@@ -150,6 +150,8 @@ public class MainActivity extends Activity {
         content.setClipChildren(false);
         content.setClipToPadding(false);
         main.addView(content, new LinearLayout.LayoutParams(Ui.MATCH, Ui.WRAP));
+        ui.wideParent = content;
+        ui.widePad = ui.dp(14);
 
         motion = new Motion(scroll, content, ui.dn);
         scroll.setOnScroll((y, oy) -> {

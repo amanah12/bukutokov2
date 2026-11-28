@@ -128,6 +128,18 @@ public class Motion {
     }
 
     // ------------------------------------------------------------------ miring di tepi layar
+    private final java.util.WeakHashMap<View, Boolean> camSet = new java.util.WeakHashMap<>();
+
+    private void untilt(View c) {
+        if (c.getRotationX() != 0f) c.setRotationX(0f);
+        if (c.getLayerType() == View.LAYER_TYPE_HARDWARE) c.setLayerType(View.LAYER_TYPE_NONE, null);
+    }
+
+    /**
+     * Miring di tepi layar. Hanya menyentuh kartu yang memang berubah: setCameraDistance selalu
+     * membuat tampilan digambar ulang, jadi dipasang sekali saja. Kartu yang sedang miring
+     * dijadikan layer GPU supaya gulir tinggal memutar tekstur.
+     */
     public void tilt(boolean on) {
         tiltOn = on;
         int vh = sv.getHeight();
@@ -135,18 +147,25 @@ public class Motion {
         for (int i = 0; i < content.getChildCount(); i++) {
             View c = content.getChildAt(i);
             if (!on || vh <= 0 || c.getHeight() <= 0) {
-                if (c.getRotationX() != 0f) c.setRotationX(0f);
+                untilt(c);
                 continue;
             }
             float center = topIn(c) + c.getHeight() / 2f - sy;
             float rel = (center - vh / 2f) / (vh / 2f);
             float e = (Math.abs(rel) - 0.5f) / 0.5f;
-            if (e < 0f) e = 0f;
             if (e > 1.4f) e = 1.4f;
+            if (e <= 0f) {
+                untilt(c);
+                continue;
+            }
             float rot = (rel < 0 ? 1f : -1f) * e * 7f;
-            c.setCameraDistance(9000f * dn);
-            c.setPivotY(rel < 0 ? c.getHeight() : 0f);
-            c.setRotationX(rot);
+            if (camSet.put(c, Boolean.TRUE) == null) c.setCameraDistance(9000f * dn);
+            float pv = rel < 0 ? c.getHeight() : 0f;
+            if (c.getPivotY() != pv) c.setPivotY(pv);
+            if (c.getLayerType() != View.LAYER_TYPE_HARDWARE && c.getWidth() <= 2600 && c.getHeight() <= 2600) {
+                c.setLayerType(View.LAYER_TYPE_HARDWARE, null);
+            }
+            if (c.getRotationX() != rot) c.setRotationX(rot);
         }
     }
 

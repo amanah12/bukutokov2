@@ -76,7 +76,7 @@ public class Ui {
     // ------------------------------------------------------------------ drawable
     public static class Box extends Drawable {
         public int fill, g1, g2, border, sdClr;
-        public boolean grad, dash, topOnly, shadowOn = true, gloss, sketch;
+        public boolean grad, dash, topOnly, shadowOn = true, gloss, sketch, wide;
         public float r, bw, sx, sy, dn = 1;
         public float[] cr;
         public String shape = "";
@@ -86,7 +86,7 @@ public class Ui {
         private final Path path = new Path();
 
         public float ex() {
-            return sdClr != 0 ? sx * dn : 0;
+            return wide ? 0 : sdClr != 0 ? sx * dn : 0;
         }
 
         public float ey() {
@@ -179,7 +179,11 @@ public class Ui {
                 return;
             }
             if (sketch) {
-                drawSketch(cv, b);
+                drawSketchCached(cv, b);
+                return;
+            }
+            if (wide) {
+                drawFlatWide(cv, b);
                 return;
             }
             float ex = ex(), ey = ey();
@@ -320,6 +324,151 @@ public class Ui {
             }
             p.setStyle(Paint.Style.FILL);
             cv.restore();
+        }
+
+
+        /** Kartu memanjang untuk tema biasa: persegi penuh, garis hanya di atas dan bawah. */
+        private void drawFlatWide(Canvas cv, Rect b) {
+            float ey = ey(), w = bw * dn;
+            RectF body = new RectF(b.left, b.top, b.right, b.bottom - ey);
+            if (body.height() <= 0) return;
+            p.setPathEffect(null);
+            p.setShader(null);
+            p.setStyle(Paint.Style.FILL);
+            if (sdClr != 0 && shadowOn && ey > 0) {
+                p.setColor(sdClr);
+                cv.drawRect(b.left, body.bottom, b.right, b.bottom, p);
+            }
+            if (grad) {
+                p.setShader(new LinearGradient(body.left, body.top, body.right, body.bottom, g1, g2, Shader.TileMode.CLAMP));
+                p.setColor(0xFF000000);
+                cv.drawRect(body, p);
+                p.setShader(null);
+            } else if (fill != 0) {
+                p.setColor(fill);
+                cv.drawRect(body, p);
+            }
+            if (w > 0 && border != 0) {
+                p.setColor(border);
+                cv.drawRect(b.left, body.top, b.right, body.top + w, p);
+                cv.drawRect(b.left, body.bottom - w, b.right, body.bottom, p);
+            }
+        }
+
+        // kartu memanjang: hanya garis atas dan bawah (tanpa garis tepi kiri-kanan)
+        private Path wTopA, wTopB, wBotA, wBotB, wFill;
+        private float wW = -1, wH = -1;
+
+        private float[][] wobLine(float x0, float x1, float y, java.util.Random rnd, float amp, float step) {
+            int n = Math.max(4, Math.round((x1 - x0) / step));
+            float[] px = new float[n + 1], py = new float[n + 1];
+            float noise = 0;
+            for (int i = 0; i <= n; i++) {
+                noise = noise * 0.55f + (rnd.nextFloat() - 0.5f) * 2f * amp;
+                px[i] = x0 + (x1 - x0) * i / n;
+                py[i] = y + noise;
+            }
+            return new float[][]{px, py};
+        }
+
+        private void smoothInto(Path out, float[][] pts, boolean reverse, boolean move) {
+            float[] px = pts[0], py = pts[1];
+            int n = px.length, s = reverse ? n - 1 : 0, d = reverse ? -1 : 1;
+            if (move) out.moveTo(px[s], py[s]);
+            else out.lineTo(px[s], py[s]);
+            for (int k = 1; k < n; k++) {
+                int i = s + d * k, j = i - d;
+                out.quadTo(px[j], py[j], (px[j] + px[i]) / 2f, (py[j] + py[i]) / 2f);
+            }
+            out.lineTo(px[s + d * (n - 1)], py[s + d * (n - 1)]);
+        }
+
+        private void drawWide(Canvas cv, Rect b) {
+            float ey = ey(), pad = 2.5f * dn;
+            float top = b.top + pad, bot = b.bottom - ey - pad;
+            if (bot - top <= 4 * dn || b.width() <= 0) return;
+            if (wTopA == null || wW != b.width() || wH != b.height()) {
+                java.util.Random rnd = new java.util.Random(skSeed);
+                float amp = 1.25f * dn, x0 = b.left - 2 * dn, x1 = b.right + 2 * dn;
+                wTopA = new Path();
+                smoothInto(wTopA, wobLine(x0, x1, top, rnd, amp, 13 * dn), false, true);
+                wTopB = new Path();
+                smoothInto(wTopB, wobLine(x0, x1, top + 0.6f * dn, rnd, amp * 1.15f, 17 * dn), false, true);
+                wBotA = new Path();
+                smoothInto(wBotA, wobLine(x0, x1, bot, rnd, amp, 13 * dn), false, true);
+                wBotB = new Path();
+                smoothInto(wBotB, wobLine(x0, x1, bot + 0.6f * dn, rnd, amp * 1.15f, 17 * dn), false, true);
+                wFill = new Path();
+                smoothInto(wFill, wobLine(x0, x1, top, rnd, amp * 1.3f, 15 * dn), false, true);
+                smoothInto(wFill, wobLine(x0, x1, bot, rnd, amp * 1.3f, 15 * dn), true, false);
+                wFill.close();
+                wW = b.width();
+                wH = b.height();
+            }
+            p.setShader(null);
+            p.setPathEffect(null);
+            p.setStrokeCap(Paint.Cap.ROUND);
+            p.setStrokeJoin(Paint.Join.ROUND);
+            if (sdClr != 0 && shadowOn && ey > 0) {
+                p.setStyle(Paint.Style.STROKE);
+                p.setStrokeWidth(Math.max(1f, bw * dn * 0.8f));
+                p.setColor(Th.alpha(sdClr, 0x70));
+                cv.save();
+                cv.translate(0, ey);
+                cv.drawPath(wBotB, p);
+                cv.restore();
+                p.setStrokeWidth(1.1f * dn);
+                p.setColor(Th.alpha(sdClr, 0x60));
+                for (float x = b.left + 6 * dn; x < b.right; x += 9 * dn) cv.drawLine(x, bot, x + ey * 0.8f, bot + ey, p);
+            }
+            p.setStyle(Paint.Style.FILL);
+            cv.save();
+            cv.translate(0, 0.9f * dn);
+            if (grad) {
+                p.setShader(new LinearGradient(b.left, top, b.right, bot, g1, g2, Shader.TileMode.CLAMP));
+                p.setColor(0xFF000000);
+                cv.drawPath(wFill, p);
+                p.setShader(null);
+            } else if (fill != 0) {
+                p.setColor(fill);
+                cv.drawPath(wFill, p);
+            }
+            cv.restore();
+            if (bw > 0 && border != 0) {
+                p.setStyle(Paint.Style.STROKE);
+                p.setStrokeWidth(bw * dn);
+                p.setColor(border);
+                cv.drawPath(wTopA, p);
+                cv.drawPath(wBotA, p);
+                p.setStrokeWidth(Math.max(1f, bw * dn * 0.65f));
+                p.setColor(Th.alpha(border, 0xB4));
+                cv.drawPath(wTopB, p);
+                cv.drawPath(wBotB, p);
+            }
+            p.setStyle(Paint.Style.FILL);
+        }
+
+        // Gambar coretan dirender sekali ke bitmap lalu tinggal ditempel (gulir tetap ringan).
+        private android.graphics.Bitmap skBmp;
+        private boolean skShadowKey;
+
+        private void drawSketchCached(Canvas cv, Rect b) {
+            int w = b.width(), h = b.height();
+            if (w <= 0 || h <= 0) return;
+            if (w > 2600 || h > 2600) {
+                if (wide) drawWide(cv, b);
+                else drawSketch(cv, b);
+                return;
+            }
+            if (skBmp == null || skBmp.getWidth() != w || skBmp.getHeight() != h || skShadowKey != shadowOn) {
+                skBmp = android.graphics.Bitmap.createBitmap(w, h, android.graphics.Bitmap.Config.ARGB_8888);
+                Canvas bc = new Canvas(skBmp);
+                Rect z = new Rect(0, 0, w, h);
+                if (wide) drawWide(bc, z);
+                else drawSketch(bc, z);
+                skShadowKey = shadowOn;
+            }
+            cv.drawBitmap(skBmp, b.left, b.top, null);
         }
 
         // ---------------------------------------------------------- bentuk dekoratif
@@ -793,6 +942,7 @@ public class Ui {
     // ------------------------------------------------------------------ view
     public static class Card extends LinearLayout {
         public final int kind;
+        public int bleed; // >0: kartu memanjang sampai tepi layar (px per sisi)
 
         public Card(Context c, int kind) {
             super(c);
@@ -916,14 +1066,32 @@ public class Ui {
         v.setPadding(dp(l) + b.extL(), dp(t) + b.extT(), dp(r) + Math.round(b.ex()) + b.extR(), dp(bt) + Math.round(b.ey()) + b.extB());
     }
 
+    /** Induk halaman (content) dan lebar tepi yang dibuang, untuk kartu memanjang. */
+    public ViewGroup wideParent;
+    public int widePad;
+
     public Card card(ViewGroup p, int kind) {
+        return card(p, kind, false);
+    }
+
+    /** wide=true: kartu memanjang sampai tepi layar tanpa garis kiri-kanan (dipakai kartu tabel). */
+    public Card card(ViewGroup p, int kind, boolean wantWide) {
         Card k = new Card(c, kind);
         Box b = boxFor(kind);
+        boolean wide = wantWide && p == wideParent && kind != DIALOG && th.shape.isEmpty();
+        LinearLayout.LayoutParams lp = new LinearLayout.LayoutParams(MATCH, WRAP);
+        if (wide) {
+            b.wide = true;
+            k.bleed = widePad;
+            lp.leftMargin = -widePad;
+            lp.rightMargin = -widePad;
+        }
         k.setBackground(b);
         pad(k, b, 12, 12, 12, 12);
+        if (wide) k.setPadding(k.getPaddingLeft() + widePad, k.getPaddingTop(), k.getPaddingRight() + widePad, k.getPaddingBottom());
         k.setClipChildren(false);
         k.setClipToPadding(false);
-        p.addView(k, new LinearLayout.LayoutParams(MATCH, WRAP));
+        p.addView(k, lp);
         return k;
     }
 
@@ -1333,11 +1501,21 @@ public class Ui {
     }
 
     public LinearLayout hscroll(ViewGroup p) {
+        return hscroll(p, false);
+    }
+
+    /** bleed=true: pada kartu memanjang, tabel ikut sampai tepi layar. Isi selalu terpotong di batas scroll. */
+    public LinearLayout hscroll(ViewGroup p, boolean bleed) {
         HorizontalScrollView h = new HorizontalScrollView(c);
         h.setHorizontalScrollBarEnabled(false);
         h.setClipChildren(true);
-        h.setClipToPadding(false);
-        p.addView(h, new LinearLayout.LayoutParams(MATCH, WRAP));
+        h.setClipToPadding(true);
+        LinearLayout.LayoutParams hlp = new LinearLayout.LayoutParams(MATCH, WRAP);
+        if (bleed && p instanceof Card && ((Card) p).bleed > 0) {
+            hlp.leftMargin = -p.getPaddingLeft();
+            hlp.rightMargin = -p.getPaddingRight();
+        }
+        p.addView(h, hlp);
         LinearLayout r = new LinearLayout(c);
         r.setOrientation(LinearLayout.HORIZONTAL);
         r.setGravity(Gravity.CENTER_VERTICAL);

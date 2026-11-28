@@ -66,9 +66,9 @@ public class RekapScreen extends Screen {
         legend(lg, ui.th.c1, "Masuk");
         legend(lg, ui.th.c2, "Keluar");
 
-        Ui.Card tc = ui.card(into, Ui.NORMAL);
+        Ui.Card tc = ui.card(into, Ui.NORMAL, true);
         ui.mt(tc, 14);
-        LinearLayout hs = ui.hscroll(tc);
+        LinearLayout hs = ui.hscroll(tc, true);
         LinearLayout tbl = ui.col(hs);
         head(tbl, HEAD, W, RIGHT);
         if (ks.isEmpty()) {

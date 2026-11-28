@@ -75,11 +75,11 @@ public class KasScreen extends Screen {
         mb.setLayoutParams(Ui.lpOf(mb));
 
         // ---- tabel catatan harian
-        Ui.Card tc = ui.card(into, Ui.NORMAL);
+        Ui.Card tc = ui.card(into, Ui.NORMAL, true);
         ui.mt(tc, 14);
         TextView h = ui.h2(tc, "Catatan harian");
         ui.mar(h, 0, 0, 0, 8);
-        LinearLayout hs = ui.hscroll(tc);
+        LinearLayout hs = ui.hscroll(tc, true);
         LinearLayout tbl = ui.col(hs);
         head(tbl, HEAD, W, RIGHT);
 
